@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import logoSemenPadang from '../assets/LOGO-PT-SEMEN-PADANG.png';
 
@@ -74,13 +74,12 @@ export default function Login() {
             className="text-4xl lg:text-[2.75rem] leading-[1.15] font-semibold"
             style={displayFont}
           >
-            Sistem Tapping
+            Sistem Permit &
             <br />
-            Tambang
+            Tapping Tambang
           </h1>
           <p className="mt-4 text-sm text-white/80 max-w-[30ch]">
-            Pemantauan proses tapping tambang secara real-time untuk mendukung
-            keputusan operasional yang cepat dan akurat.
+            Platform terintegrasi untuk pengajuan permit dan pemantauan akses area tambang secara real-time.
           </p>
         </div>
 
@@ -130,9 +129,9 @@ export default function Login() {
                 <label htmlFor="password" className="block text-sm font-medium text-[#374151]">
                   Kata sandi
                 </label>
-                <a href="/forgot-password" className="text-sm font-medium text-[#E11D2E] hover:underline">
+                <Link to="/forgot-password" className="text-sm font-medium text-[#E11D2E] hover:underline">
                   Lupa Password?
-                </a>
+                </Link>
               </div>
               <input
                 id="password"
@@ -157,16 +156,16 @@ export default function Login() {
             <div className="pt-4 text-center border-t border-gray-100 space-y-4">
               <div>
                 <p className="text-sm text-gray-600 mb-2">Belum punya akun pemohon mandiri?</p>
-                <a href="/register" className="inline-flex justify-center w-full py-2.5 rounded-xl text-sm font-medium text-[#E11D2E] border border-[#E11D2E]/30 bg-white hover:bg-red-50 transition-colors">
+                <Link to="/register" className="inline-flex justify-center w-full py-2.5 rounded-xl text-sm font-medium text-[#E11D2E] border border-[#E11D2E]/30 bg-white hover:bg-red-50 transition-colors">
                   Daftar Akun Baru (Visitor/Internal/Magang)
-                </a>
+                </Link>
               </div>
-              
+
               <div>
                 <p className="text-sm text-gray-600 mb-2">Pekerja Tambang yang akan ujian?</p>
-                <a href="/ujian/login" className="inline-flex justify-center w-full py-2.5 rounded-xl text-sm font-medium text-[#E11D2E] border border-[#E11D2E]/30 bg-red-50 hover:bg-red-100 transition-colors">
+                <Link to="/ujian/login" className="inline-flex justify-center w-full py-2.5 rounded-xl text-sm font-medium text-[#E11D2E] border border-[#E11D2E]/30 bg-red-50 hover:bg-red-100 transition-colors">
                   Masuk ke Ruang Ujian Online
-                </a>
+                </Link>
               </div>
             </div>
           </form>

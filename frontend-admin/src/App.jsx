@@ -30,7 +30,7 @@ function App() {
   return (
     <>
     <Toaster position="top-right" />
-    <Router>
+    <Router basename="/taptbg">
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import logoSemenPadang from '../assets/LOGO-PT-SEMEN-PADANG.png';
 
@@ -101,12 +101,12 @@ export default function ForgotPassword() {
             className="text-4xl lg:text-[2.75rem] leading-[1.15] font-semibold"
             style={displayFont}
           >
-            Sistem Tapping
+            Sistem Permit &
             <br />
-            Tambang
+            Tapping Tambang
           </h1>
           <p className="mt-4 text-sm text-white/80 max-w-[30ch]">
-            Pemantauan proses tapping tambang secara real-time untuk mendukung keputusan operasional yang cepat dan akurat.
+            Platform terintegrasi untuk pengajuan permit, ujian K3, dan pemantauan akses area tambang secara real-time.
           </p>
         </div>
 
@@ -168,9 +168,9 @@ export default function ForgotPassword() {
               </button>
 
               <div className="pt-4 text-center">
-                <a href="/login" className="text-sm text-[#E11D2E] font-medium hover:underline">
+                <Link to="/login" className="text-sm text-[#E11D2E] font-medium hover:underline">
                   Kembali ke Login
-                </a>
+                </Link>
               </div>
             </form>
           ) : (

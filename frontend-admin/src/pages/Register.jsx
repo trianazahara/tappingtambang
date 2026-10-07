@@ -73,20 +73,17 @@ export default function Register() {
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
             <Toaster position="top-right" />
             
-            {/* Background elements */}
-            <div className="absolute top-0 left-0 w-full h-96 bg-[#E11D2E] opacity-90 skew-y-3 transform -translate-y-20 -z-10"></div>
-            
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center items-center gap-3 mb-6">
                     <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
                         <HardHat size={32} className="text-[#E11D2E]" />
                     </div>
                 </div>
-                <h2 className="text-center text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+                <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
                     Pendaftaran Akun
                 </h2>
-                <p className="mt-2 text-center text-sm text-red-100">
-                    Sistem Tapping Permit Tambang PTSP
+                <p className="mt-2 text-center text-sm text-gray-500">
+                    Sistem Permit & Tapping Tambang
                 </p>
             </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import { Plus, ArrowLeft, Loader2, CheckCircle2, Users, FileText, ChevronRight, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -447,9 +448,9 @@ export default function Proyek() {
                                     <FileText size={18} /> Dokumen Safety
                                 </button>
                             )}
-                            <a href={`/dashboard/permit?id_proyek=${selectedProyek?.id_proyek}`} className="py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-md flex items-center gap-2">
+                            <Link to={`/dashboard/permit?id_proyek=${selectedProyek?.id_proyek}`} className="py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-md flex items-center gap-2">
                                 <Users size={18} /> Tambah Pekerja
-                            </a>
+                            </Link>
                         </div>
                     </div>
                     
@@ -493,11 +494,11 @@ export default function Proyek() {
                                             <td className="px-6 py-4 text-center">{pekerja.nilai_ujian_online !== null ? `${pekerja.nilai_ujian_online}/100` : '-'}</td>
                                             <td className="px-6 py-4 text-right">
                                                 {pekerja.status_berkas === 'Draft' ? (
-                                                    <a href={`/dashboard/permit?edit_id=${pekerja.id_pengajuan}`} className="text-orange-600 hover:underline text-xs font-medium bg-orange-50 px-3 py-1 rounded-lg border border-orange-100 shadow-sm inline-block">Edit Pengajuan</a>
+                                                    <Link to={`/dashboard/permit?edit_id=${pekerja.id_pengajuan}`} className="text-orange-600 hover:underline text-xs font-medium bg-orange-50 px-3 py-1 rounded-lg border border-orange-100 shadow-sm inline-block">Edit Pengajuan</Link>
                                                 ) : (pekerja.status_berkas === 'Siap_Cetak' || pekerja.status_berkas === 'Aktif') ? (
                                                     <a href={`${import.meta.env.VITE_API_URL}/api/pengajuan/${pekerja.id_pengajuan}/cetak-permit`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs font-medium bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 shadow-sm inline-block">Download Permit</a>
                                                 ) : (
-                                                    <a href={`/dashboard/permit`} className="text-blue-600 hover:underline text-xs font-medium bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 shadow-sm inline-block">Lihat di Permit</a>
+                                                    <Link to={`/dashboard/permit`} className="text-blue-600 hover:underline text-xs font-medium bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 shadow-sm inline-block">Lihat di Permit</Link>
                                                 )}
                                             </td>
                                         </tr>
