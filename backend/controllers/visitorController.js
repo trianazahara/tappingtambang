@@ -315,7 +315,8 @@ exports.cetakVisitor = async (req, res) => {
         // 2. Data QR (Sekarang mengarah ke URL Publik)
         let qrBuffer = null;
         const uid = visitor.uid_kartu || visitor.nomor_kartu;
-        const qrContent = `http://localhost:5173/v/${uid}`; // URL Public Profile Visitor
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const qrContent = `${frontendUrl}/v/${uid}`; // URL Public Profile Visitor
         try {
             const qrDataUrl = await QRCode.toDataURL(qrContent, { margin: 1 });
             const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");

@@ -222,7 +222,8 @@ const prosesTapping = async (req, res) => {
                 });
                 if (lastPermit) {
                     if (lastPermit.file_foto) {
-                        fotoURL = `http://localhost:3000/${lastPermit.file_foto.replace(/\\/g, '/')}`;
+                        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+                        fotoURL = `${backendUrl}/${lastPermit.file_foto.replace(/\\/g, '/')}`;
                     }
                     if (lastPermit.master_areas && lastPermit.master_areas.length > 0) {
                         aksesAreaArr = lastPermit.master_areas.map(a => a.nama_area);

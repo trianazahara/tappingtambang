@@ -10,9 +10,10 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
 const sendVerificationEmail = async (toEmail, token, namaLengkap, password) => {
-    // Pada saat diakses melalui React (frontend), port-nya adalah 5173
-    const verificationUrl = `http://localhost:5173/verify?token=${token}`;
+    const verificationUrl = `${frontendUrl}/verify?token=${token}`;
 
     const mailOptions = {
         from: '"Sistem Permit PT Semen Padang" <no-reply@semenpadang.co.id>',
@@ -201,7 +202,7 @@ const sendPermitNotification = async (toEmail, namaPemohon, perusahaan, actionTy
                 </div>
                 <p>Silakan login ke sistem untuk melakukan proses verifikasi lebih lanjut.</p>
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="http://localhost:5173/login" style="background-color: #E11D2E; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                    <a href="${frontendUrl}/login" style="background-color: #E11D2E; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                         Buka Aplikasi Permit
                     </a>
                 </div>
