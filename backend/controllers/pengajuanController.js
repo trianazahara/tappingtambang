@@ -297,7 +297,12 @@ const approvePengajuan = async (req, res) => {
                     if (butuhUjian && pengajuan.status_ujian_online !== 'Selesai') {
                         return res.status(400).json({ success: false, message: "Pekerja harus menyelesaikan ujian K3 terlebih dahulu sebelum disetujui Admin." });
                     }
-                    nextStatus = 'Pending_Kasie_Pemohon';
+                    // Jika perpanjangan langsung ke Kasie HSE, jika izin baru tetap ke Kasie Pemohon
+                    if (pengajuan.jenis_izin === 'Perpanjangan') {
+                        nextStatus = 'Pending_HSE';
+                    } else {
+                        nextStatus = 'Pending_Kasie_Pemohon';
+                    }
                     validRole = true;
                 }
                 break;
@@ -357,7 +362,7 @@ const approvePengajuan = async (req, res) => {
                 actionType = 'admin';
             } else if (nextStatus === 'Pending_HSE') {
                 nextRole = 'Kasie_HSE';
-                actionType = 'kasie_pemohon';
+                actionType = role === 'Kasie_Pemohon' ? 'kasie_pemohon' : 'admin_hse';
             } else if (nextStatus === 'Pending_KTT') {
                 nextRole = 'KTT';
                 actionType = 'kasie_hse';
@@ -397,6 +402,32 @@ const rejectPengajuan = async (req, res) => {
 
         const pengajuan = await PengajuanPermit.findByPk(id);
         if (!pengajuan) return res.status(404).json({ success: false, message: "Pengajuan tidak ditemukan" });
+
+        // Validasi role penolak sesuai status berkas saat ini
+        let canReject = false;
+        switch (pengajuan.status_berkas) {
+            case 'Pending_Admin':
+                if (role === 'Admin') canReject = true;
+                break;
+            case 'Pending_Kasie_Pemohon':
+                if (role === 'Kasie_Pemohon') canReject = true;
+                break;
+            case 'Pending_HSE':
+                if (role === 'Kasie_HSE') canReject = true;
+                break;
+            case 'Pending_KTT':
+                if (role === 'KTT') canReject = true;
+                break;
+            default:
+                canReject = false;
+        }
+
+        if (!canReject) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Anda (${role}) tidak memiliki wewenang untuk menolak pada tahap ${pengajuan.status_berkas.replace(/_/g, ' ')}` 
+            });
+        }
 
         pengajuan.status_berkas = 'Ditolak';
         await pengajuan.save();
@@ -801,13 +832,28 @@ const cetakPermit = async (req, res) => {
             parsedUnits.forEach(unit => {
                 const combinedUnitStr = unit.type_unit ? `${unit.nama_kendaraan} - ${unit.type_unit}` : unit.nama_kendaraan;
                 kimperRows.push({
-                    no_license: kartu.nomor_license || '-',
+                    no_license: unit.nomor_license || kartu.nomor_license || '-',
                     type_unit: combinedUnitStr,
                     permit: unit.status_fr === 'R' ? 'Restricted (R)' : 'Full (F)',
                     issued_at: formatDate(unit.issued_at)
                 });
             });
         }
+
+        // Fungsi format tanggal lengkap (misal: 13 Oktober 2026)
+        const formatDateFull = (dateStr) => {
+            if (!dateStr || dateStr === '-') return '-';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+        };
+
+        const dateCetakObj = kartu && kartu.tanggal_cetak ? new Date(kartu.tanggal_cetak) : new Date();
+        const tglCetak = dateCetakObj.getDate().toString().padStart(2, '0');
+        const bulanCetakList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const bulanCetak = bulanCetakList[dateCetakObj.getMonth()];
+        const tahunCetak = dateCetakObj.getFullYear().toString();
 
         // Siapkan data untuk dirender ke dalam template word
         let perusahaan = pengajuan.karyawan.perusahaan || '-';
@@ -825,7 +871,11 @@ const cetakPermit = async (req, res) => {
             tanggal_mulai: formatDate(pengajuan.tanggal_mulai),
             tanggal_selesai: formatDate(pengajuan.tanggal_selesai),
             tanggal_cetak: kartu && kartu.tanggal_cetak ? formatDate(kartu.tanggal_cetak) : formatDate(new Date()),
+            tanggal_cetak_lengkap: kartu && kartu.tanggal_cetak ? formatDateFull(kartu.tanggal_cetak) : formatDateFull(new Date()),
             tanggal_cetak_short: kartu && kartu.tanggal_cetak ? formatDateShort(kartu.tanggal_cetak) : formatDateShort(new Date()),
+            tgl_cetak: tglCetak,
+            bulan_cetak: bulanCetak,
+            tahun_cetak: tahunCetak,
             qr_code: qrBuffer ? qrBuffer.toString('base64') : null, // konversi ke base64
             foto: fotoBuffer ? fotoBuffer.toString('base64') : null,   // konversi ke base64
             area_rows: areaRows, // untuk perulangan dinamis tabel 3 kolom

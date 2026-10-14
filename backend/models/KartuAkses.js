@@ -38,7 +38,7 @@ const KartuAkses = db.define('kartu_akses', {
     },
     berlaku_hingga: {
         type: DataTypes.DATEONLY,
-        allowNull: false
+        allowNull: true
     },
     nomor_license: {
         type: DataTypes.STRING(100)

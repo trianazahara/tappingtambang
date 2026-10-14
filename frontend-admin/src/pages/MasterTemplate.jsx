@@ -105,8 +105,10 @@ export default function MasterTemplate() {
                 <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2"><AlertCircle size={18}/> Panduan Template</h4>
                 <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
                     <li>Pastikan file berformat <strong>.docx</strong> (Bukan .doc atau PDF).</li>
-                    <li>Gunakan penanda dengan kurung kurawal ganda di dalam file Word untuk data otomatis.</li>
-                    <li>Variabel yang tersedia: <strong>&#123;&#123;nama_lengkap&#125;&#125;</strong>, <strong>&#123;&#123;nik&#125;&#125;</strong>, <strong>&#123;&#123;departemen&#125;&#125;</strong>, <strong>&#123;&#123;perusahaan&#125;&#125;</strong>, <strong>&#123;&#123;jabatan&#125;&#125;</strong>, <strong>&#123;&#123;kategori_akses&#125;&#125;</strong>, <strong>&#123;&#123;tanggal_mulai&#125;&#125;</strong>, <strong>&#123;&#123;tanggal_selesai&#125;&#125;</strong></li>
+                    <li>Gunakan penanda kurung kurawal di dalam file Word untuk data otomatis.</li>
+                    <li>Variabel biodata: <strong>&#123;nama_lengkap&#125;</strong>, <strong>&#123;nik&#125;</strong>, <strong>&#123;departemen&#125;</strong>, <strong>&#123;perusahaan&#125;</strong>, <strong>&#123;jabatan&#125;</strong>, <strong>&#123;kategori_akses&#125;</strong></li>
+                    <li>Variabel masa berlaku: <strong>&#123;tanggal_mulai&#125;</strong>, <strong>&#123;tanggal_selesai&#125;</strong></li>
+                    <li>Variabel tanggal cetak / TTD: <strong>&#123;tanggal_cetak&#125;</strong> (misal: <em>13 Okt 2026</em>), <strong>&#123;tanggal_cetak_lengkap&#125;</strong> (misal: <em>13 Oktober 2026</em>), <strong>&#123;tanggal_cetak_short&#125;</strong> (misal: <em>13 Okt</em>), <strong>&#123;tgl_cetak&#125;</strong> (<em>13</em>), <strong>&#123;bulan_cetak&#125;</strong> (<em>Oktober</em>), <strong>&#123;tahun_cetak&#125;</strong> (<em>2026</em>)</li>
                 </ul>
             </div>
         </div>

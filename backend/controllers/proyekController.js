@@ -123,8 +123,8 @@ const submitDraftsProyek = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Proyek tidak ditemukan' });
         }
 
-        if (proyek.jenis_proyek !== 'Perpanjangan' && (!proyek.file_life_saving_talk || !proyek.file_jsa || !proyek.file_izin_kerja_umum)) {
-            return res.status(400).json({ success: false, message: 'Dokumen safety utama (LST, JSA, Izin Kerja Umum) harus diunggah terlebih dahulu.' });
+        if (proyek.jenis_proyek !== 'Perpanjangan' && !proyek.file_jsa) {
+            return res.status(400).json({ success: false, message: 'Dokumen safety JSA harus diunggah terlebih dahulu.' });
         }
 
         if (!proyek.file_surat_penunjukan || !proyek.file_kontrak_kerja) {

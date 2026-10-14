@@ -117,13 +117,41 @@ export default function KartuAkses() {
             console.error('Failed to parse type_unit', e);
         }
 
+        const isPermitMerah = (pengajuan.kategori_akses || '').includes('Merah');
+
+        if (!isPermitMerah && parsedUnits.length === 0 && pengajuan.jenis_kendaraan) {
+            let preSelected = [];
+            if (pengajuan.jenis_kendaraan.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(pengajuan.jenis_kendaraan);
+                    preSelected = parsed.map(k => typeof k === 'string' ? k : (k.nama_kendaraan || k));
+                } catch (e) {
+                    preSelected = [];
+                }
+            } else {
+                preSelected = pengajuan.jenis_kendaraan.split(',').map(s => s.trim()).filter(Boolean);
+            }
+
+            parsedUnits = preSelected.map(name => {
+                const mk = kendaraanList.find(k => k.nama_kendaraan.toLowerCase() === name.toLowerCase());
+                return {
+                    id_kendaraan: mk ? mk.id_kendaraan : null,
+                    nama_kendaraan: mk ? mk.nama_kendaraan : name,
+                    type_unit: mk ? mk.type_unit : '',
+                    status_fr: 'F',
+                    issued_at: '',
+                    nomor_license: kartu?.nomor_license || ''
+                };
+            });
+        }
+
         setFormData({
             area_ids: areaIds,
             uid_kartu: kartu?.uid_kartu || '',
             jenis_teknologi: kartu?.jenis_teknologi || 'Barcode',
             nomor_permit: generatedNomor,
-            nomor_license: kartu?.nomor_license || '',
-            type_unit: parsedUnits
+            nomor_license: isPermitMerah ? '' : (kartu?.nomor_license || ''),
+            type_unit: isPermitMerah ? [] : parsedUnits
         });
         setModal({ isOpen: true, data: pengajuan });
         setError('');
@@ -166,9 +194,10 @@ export default function KartuAkses() {
             currentUnits.push({
                 id_kendaraan: k.id_kendaraan,
                 nama_kendaraan: k.nama_kendaraan,
-                type_unit: k.type_unit,
+                type_unit: k.type_unit || '',
                 status_fr: 'F',
-                issued_at: ''
+                issued_at: '',
+                nomor_license: formData.nomor_license || ''
             });
         }
         setFormData({ ...formData, type_unit: currentUnits });
@@ -199,6 +228,7 @@ export default function KartuAkses() {
         setError('');
         
         try {
+            const isPermitMerah = (modal.data.kategori_akses || '').includes('Merah');
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/kartu/proses`, {
                 id_pengajuan: modal.data.id_pengajuan,
                 area_ids: formData.area_ids,
@@ -206,8 +236,8 @@ export default function KartuAkses() {
                 jenis_teknologi: formData.jenis_teknologi,
                 nomor_permit: formData.nomor_permit,
                 warna_kartu: modal.data.kategori_akses || 'Merah',
-                nomor_license: formData.nomor_license,
-                type_unit: JSON.stringify(formData.type_unit)
+                nomor_license: isPermitMerah ? null : (formData.nomor_license || null),
+                type_unit: isPermitMerah ? '[]' : JSON.stringify(formData.type_unit || [])
             });
 
             if (res.data.success) {
@@ -455,7 +485,11 @@ export default function KartuAkses() {
                                                         <CalendarClock size={16} className="text-gray-400"/>
                                                         {new Date(kartu?.berlaku_hingga || item.tanggal_selesai).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
-                                                ) : <span className="text-gray-400">-</span>}
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        Permanent
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex gap-2 justify-center opacity-80 group-hover:opacity-100 transition-opacity">
@@ -569,84 +603,189 @@ export default function KartuAkses() {
                                             </div>
                                         )}
                                         
-                                        {/* New Permit Data Fields */}
-                                        <div className="space-y-4 pt-4 border-t border-gray-100">
-                                            <div className="space-y-1.5">
-                                                <label className="block text-sm font-medium text-gray-700">Nomor License (SIMPER/KIMPER)</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={formData.nomor_license}
-                                                    onChange={(e) => setFormData({...formData, nomor_license: e.target.value})}
-                                                    placeholder="Contoh: SIM-123456"
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E]"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5 md:col-span-2">
-                                                <label className="block text-sm font-medium text-gray-700">Type Unit / Kendaraan</label>
-                                                <div className="flex flex-col gap-4 p-4 border border-gray-200 rounded-xl bg-gray-50 max-h-96 overflow-y-auto">
-                                                    {kendaraanList.length > 0 ? (() => {
-                                                        const selectedColorMap = {
-                                                            'Hijau (Full Pit Access)': 'Hijau',
-                                                            'Biru (In Pit Access)': 'Biru',
-                                                            'Orange': 'Orange'
-                                                        };
-                                                        const permitColor = modal.data.kategori_akses;
-                                                        const filterColor = selectedColorMap[permitColor];
-                                                        const filteredUnits = filterColor ? kendaraanList.filter(k => k.warna_permit === filterColor) : kendaraanList;
+                                        {/* Permit Merah: Sembunyikan Nomor License & Kendaraan. Warna Lain: Filter sesuai warna permit (khusus Hijau ada opsi unit tambahan) */}
+                                        {(() => {
+                                            const kategoriAkses = modal?.data?.kategori_akses || '';
+                                            const isPermitMerah = kategoriAkses.includes('Merah');
+                                            const isPermitBiru = kategoriAkses.includes('Biru');
+                                            const isPermitOrange = kategoriAkses.includes('Orange');
+                                            const isPermitHijau = kategoriAkses.includes('Hijau');
+
+                                            if (isPermitMerah) {
+                                                return (
+                                                    <div className="pt-4 border-t border-gray-100">
+                                                        <div className="bg-red-50/70 border border-red-200/80 rounded-2xl p-4 flex items-start gap-3">
+                                                            <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+                                                                <User size={18} />
+                                                            </div>
+                                                            <div>
+                                                                <h5 className="font-bold text-gray-900 text-sm mb-1">Permit Merah (Pit Worker / Pejalan Kaki)</h5>
+                                                                <p className="text-xs text-gray-600 leading-relaxed">
+                                                                    Pemohon permit merah beraktivitas sebagai pejalan kaki di area tambang dan tidak membawa maupun mengemudikan kendaraan/alat berat, sehingga <strong>Nomor License (SIMPER/KIMPER)</strong> dan <strong>Type Unit Kendaraan</strong> ditiadakan.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Tentukan kendaraan yang relevan sesuai warna permit
+                                            let listUtama = [];
+                                            let listTambahan = [];
+
+                                            if (isPermitBiru) {
+                                                // Biru HANYA menampilkan kendaraan Biru
+                                                listUtama = kendaraanList.filter(k => k.warna_permit === 'Biru');
+                                            } else if (isPermitOrange) {
+                                                // Orange HANYA menampilkan kendaraan Orange
+                                                listUtama = kendaraanList.filter(k => k.warna_permit === 'Orange');
+                                            } else if (isPermitHijau) {
+                                                // Hijau: Unit LV (Hijau) adalah list utama, dan bisa memilih unit tambahan (Scania, Truk, Alat Lain)
+                                                listUtama = kendaraanList.filter(k => k.warna_permit === 'Hijau');
+                                                listTambahan = kendaraanList.filter(k => k.warna_permit !== 'Hijau');
+                                            } else {
+                                                listUtama = kendaraanList;
+                                            }
+
+                                            const renderCardKendaraan = (k) => {
+                                                const currentUnits = Array.isArray(formData.type_unit) ? formData.type_unit : [];
+                                                const selectedUnit = currentUnits.find(v => (v.id_kendaraan === k.id_kendaraan) || (!v.id_kendaraan && v.nama_kendaraan === k.nama_kendaraan));
+                                                const isChecked = !!selectedUnit;
+
+                                                return (
+                                                    <div key={k.id_kendaraan} className={`flex flex-col gap-2.5 p-3 rounded-xl border transition-all ${
+                                                        isChecked 
+                                                            ? 'bg-white border-[#E11D2E]/40 shadow-sm ring-1 ring-[#E11D2E]/20' 
+                                                            : 'border-gray-200 bg-white/70 hover:border-gray-300'
+                                                    }`}>
+                                                        <label className="flex items-center gap-3 text-sm text-gray-800 cursor-pointer font-semibold select-none">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => handleKendaraanChange(k)}
+                                                                className="rounded text-[#E11D2E] focus:ring-[#E11D2E] w-4 h-4 cursor-pointer"
+                                                            />
+                                                            <span className="flex-1">{k.nama_kendaraan} {k.type_unit ? `- ${k.type_unit}` : ''}</span>
+                                                            <span className="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 text-gray-600">
+                                                                {k.kategori_kendaraan}
+                                                            </span>
+                                                            {k.warna_permit && (
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                                                                    k.warna_permit === 'Hijau' ? 'bg-green-100 text-green-700' :
+                                                                    k.warna_permit === 'Biru' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-orange-100 text-orange-700'
+                                                                }`}>
+                                                                    {k.warna_permit}
+                                                                </span>
+                                                            )}
+                                                        </label>
                                                         
-                                                        if (filteredUnits.length === 0) {
-                                                            return <div className="text-sm text-gray-500 italic">Tidak ada unit untuk warna permit {permitColor}.</div>;
-                                                        }
-
-                                                        return filteredUnits.map(k => {
-                                                            const currentUnits = Array.isArray(formData.type_unit) ? formData.type_unit : [];
-                                                            const selectedUnit = currentUnits.find(v => (v.id_kendaraan === k.id_kendaraan) || (!v.id_kendaraan && v.nama_kendaraan === k.nama_kendaraan));
-                                                            const isChecked = !!selectedUnit;
-
-                                                            return (
-                                                                <div key={k.id_kendaraan} className={`flex flex-col gap-3 p-3 border rounded-lg transition-colors ${isChecked ? 'bg-white border-[#E11D2E]/30 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}>
-                                                                    <label className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer font-medium">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isChecked}
-                                                                            onChange={() => handleKendaraanChange(k)}
-                                                                            className="rounded text-[#E11D2E] focus:ring-[#E11D2E] w-4 h-4"
-                                                                        /> {k.nama_kendaraan} {k.type_unit ? `- ${k.type_unit}` : ''} <span className="text-xs text-gray-400 font-normal">({k.kategori_kendaraan})</span>
+                                                        {isChecked && (
+                                                            <div className="pl-7 pt-3 border-t border-gray-100 mt-0.5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                                <div>
+                                                                    <label className="text-[11px] font-semibold text-gray-700 block mb-1">
+                                                                        No. License ({k.nama_kendaraan}):
                                                                     </label>
-                                                                    
-                                                                    {isChecked && (
-                                                                        <div className="flex flex-wrap gap-4 pl-6 pt-1 border-t border-gray-100 mt-1">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <label className="text-xs font-medium text-gray-600">Status:</label>
-                                                                                <select
-                                                                                    value={selectedUnit.status_fr || 'F'}
-                                                                                    onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'status_fr', e.target.value)}
-                                                                                    className="text-xs px-2 py-1.5 rounded border border-gray-300 bg-white"
-                                                                                >
-                                                                                    <option value="F">Full (F)</option>
-                                                                                    <option value="R">Restricted (R)</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <label className="text-xs font-medium text-gray-600">Issued At:</label>
-                                                                                <input
-                                                                                    type="date"
-                                                                                    value={selectedUnit.issued_at || ''}
-                                                                                    onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'issued_at', e.target.value)}
-                                                                                    className="text-xs px-2 py-1.5 rounded border border-gray-300 bg-white"
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder={`No. License / SIM / KIMPER`}
+                                                                        value={selectedUnit.nomor_license !== undefined ? selectedUnit.nomor_license : (formData.nomor_license || '')}
+                                                                        onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'nomor_license', e.target.value)}
+                                                                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white font-medium focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E]"
+                                                                    />
                                                                 </div>
-                                                            );
-                                                        });
-                                                    })() : (
-                                                        <div className="text-sm text-gray-400">Memuat data kendaraan...</div>
-                                                    )}
+                                                                <div>
+                                                                    <label className="text-[11px] font-semibold text-gray-700 block mb-1">
+                                                                        Status Izin:
+                                                                    </label>
+                                                                    <select
+                                                                        value={selectedUnit.status_fr || 'F'}
+                                                                        onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'status_fr', e.target.value)}
+                                                                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white font-medium focus:outline-none focus:border-[#E11D2E]"
+                                                                    >
+                                                                        <option value="F">Full (F) - Penuh</option>
+                                                                        <option value="R">Restricted (R) - Terbatas</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[11px] font-semibold text-gray-700 block mb-1">
+                                                                        Issued At:
+                                                                    </label>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={selectedUnit.issued_at || ''}
+                                                                        onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'issued_at', e.target.value)}
+                                                                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white font-medium focus:outline-none focus:border-[#E11D2E]"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            };
+
+                                            return (
+                                                <div className="space-y-4 pt-4 border-t border-gray-100">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="block text-sm font-semibold text-gray-700">Nomor License Utama / SIMPER (Default)</label>
+                                                            <span className="text-xs text-gray-400">Nomor lisensi operator</span>
+                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={formData.nomor_license}
+                                                            onChange={(e) => setFormData({...formData, nomor_license: e.target.value})}
+                                                            placeholder="Contoh: SIM-123456 / KIMP-001"
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E]"
+                                                        />
+                                                        <p className="text-[11px] text-gray-400">
+                                                            Jika pekerja membawa lebih dari 1 kendaraan (misal LV dan Scania), masing-masing nomor lisensi/KIMPER dapat disesuaikan di kolom setiap kendaraan di bawah.
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="space-y-2 md:col-span-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="block text-sm font-semibold text-gray-700">Type Unit / Kendaraan Diizinkan</label>
+                                                            <span className="text-xs text-gray-500 font-medium">
+                                                                {formData.type_unit?.length || 0} unit dipilih
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="flex flex-col gap-3 p-3.5 border border-gray-200 rounded-xl bg-gray-50/70 max-h-96 overflow-y-auto">
+                                                            {/* List Utama Sesuai Warna Permit */}
+                                                            {isPermitHijau && (
+                                                                <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+                                                                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                                                                        Unit Utama Permit Hijau (Light Vehicle / LV)
+                                                                    </span>
+                                                                    <span className="text-[11px] text-gray-500">Kendaraan standar akses hijau</span>
+                                                                </div>
+                                                            )}
+                                                            {listUtama.length > 0 ? (
+                                                                listUtama.map(k => renderCardKendaraan(k))
+                                                            ) : (
+                                                                <div className="text-sm text-gray-400 p-2">Tidak ada kendaraan terdaftar untuk warna {modal?.data?.kategori_akses}</div>
+                                                            )}
+
+                                                            {/* Unit Tambahan Khusus Permit Hijau (Bisa bawa Scania, Truk, dll) */}
+                                                            {isPermitHijau && listTambahan.length > 0 && (
+                                                                <div className="mt-4 pt-3 border-t-2 border-dashed border-gray-200 space-y-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2.5 py-1 rounded">
+                                                                            Unit Tambahan yang Diizinkan (Scania, Truk, Alat Lain)
+                                                                        </span>
+                                                                        <span className="text-[11px] text-gray-500">Khusus pemegang hijau yang juga berizin bawa unit lain</span>
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-2.5">
+                                                                        {listTambahan.map(k => renderCardKendaraan(k))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                </div>
-                                            </div>
+                                            );
+                                        })()}
                                         </div>
 
                                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col items-center justify-center space-y-3">

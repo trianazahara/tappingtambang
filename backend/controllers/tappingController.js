@@ -60,8 +60,8 @@ const prosesTapping = async (req, res) => {
             if (kartu.status_kartu !== 'Aktif') {
                 keteranganSistem = `Akses ditolak: Status kartu ${kartu.status_kartu}`;
             }
-            // Cek masa berlaku
-            else if (new Date(kartu.berlaku_hingga) < new Date()) {
+            // Cek masa berlaku (jika ada masa berlaku)
+            else if (kartu.berlaku_hingga && new Date(kartu.berlaku_hingga) < new Date()) {
                 keteranganSistem = 'Akses ditolak: Masa berlaku permit telah habis (Expired)';
             }
             else {

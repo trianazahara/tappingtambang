@@ -42,16 +42,26 @@ const startCronJobs = () => {
                 }
             }
 
-            // 2. Cek SIM Expired
+            // 2. Cek SIM / SIO Expired
             // H-30, H-14, H-7, H-3, atau expired
             const h30 = new Date(); h30.setDate(h30.getDate() + 30);
             
             const permitsSim = await PengajuanPermit.findAll({
                 where: {
-                    tanggal_berlaku_sim: {
-                        [Op.not]: null,
-                        [Op.lte]: h30 // Tgl berlaku kurang dari atau sama dengan H+30
-                    },
+                    [Op.or]: [
+                        {
+                            tanggal_berlaku_sim: {
+                                [Op.not]: null,
+                                [Op.lte]: h30
+                            }
+                        },
+                        {
+                            tanggal_berlaku_sio: {
+                                [Op.not]: null,
+                                [Op.lte]: h30
+                            }
+                        }
+                    ],
                     status_berkas: {
                         [Op.notIn]: ['Ditolak']
                     }
@@ -63,13 +73,17 @@ const startCronJobs = () => {
             });
 
             for (const permit of permitsSim) {
-                const toEmail = permit.Karyawan?.email || permit.User?.email;
+                // Utamakan email yang terdaftar saat pengajuan (karyawan.email)
+                const toEmail = permit.karyawan?.email || permit.Karyawan?.email || permit.user?.email || permit.User?.email;
                 if (toEmail) {
-                    const simDate = new Date(permit.tanggal_berlaku_sim);
-                    const sisaHari = Math.ceil((simDate - now) / (1000 * 60 * 60 * 24));
-                    
-                    if (sisaHari === 30 || sisaHari === 14 || sisaHari === 7 || sisaHari === 3 || sisaHari <= 0) {
-                        await sendSimExpiryNotification(toEmail, permit, sisaHari);
+                    const simDateStr = permit.tanggal_berlaku_sim || permit.tanggal_berlaku_sio;
+                    if (simDateStr) {
+                        const simDate = new Date(simDateStr);
+                        const sisaHari = Math.ceil((simDate - now) / (1000 * 60 * 60 * 24));
+                        
+                        if (sisaHari === 30 || sisaHari === 14 || sisaHari === 7 || sisaHari === 3 || sisaHari <= 0) {
+                            await sendSimExpiryNotification(toEmail, permit, sisaHari);
+                        }
                     }
                 }
             }

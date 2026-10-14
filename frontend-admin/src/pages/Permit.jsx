@@ -109,7 +109,7 @@ export default function Permit() {
         id_instansi: '',
 
         // Pilihan Kategori
-        kategori_pemohon: 'Internal', // Internal, Magang, Kontraktor
+        kategori_pemohon: role === 'Koordinator_Vendor' ? 'Kontraktor' : 'Internal', // Internal, Magang, Kontraktor
 
         // Pendidikan & Keahlian
         riwayat_pendidikan: '',
@@ -215,6 +215,13 @@ export default function Permit() {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/proyek/${id_proyek}`);
             if (res.data.success) {
                 setProyekData(res.data.data);
+                if (!edit_id_query) {
+                    setFormData(prev => ({
+                        ...prev,
+                        tanggal_mulai: prev.tanggal_mulai || (res.data.data.tanggal_mulai ? res.data.data.tanggal_mulai.substring(0, 10) : ''),
+                        tanggal_selesai: prev.tanggal_selesai || (res.data.data.tanggal_selesai ? res.data.data.tanggal_selesai.substring(0, 10) : '')
+                    }));
+                }
             }
         } catch (err) {
             console.error("Gagal memuat detail proyek:", err);
@@ -260,7 +267,7 @@ export default function Permit() {
         setFormData({
             nik_atau_ktm: '', nama_lengkap: '', jenis_kelamin: 'L', tempat_lahir: '', tanggal_lahir: '',
             agama: '', golongan_darah: '', alamat_rumah: '', no_hp: '', email: '', jabatan: '', unit_kerja: '',
-            id_instansi: '', kategori_pemohon: 'Internal', riwayat_pendidikan: '', sertifikasi_keahlian: '',
+            id_instansi: '', kategori_pemohon: role === 'Koordinator_Vendor' ? 'Kontraktor' : 'Internal', riwayat_pendidikan: '', sertifikasi_keahlian: '',
             pendidikan_khusus: '', jenis_izin: 'Baru', jenis_permintaan: 'Permanent', tanggal_mulai: '',
             tanggal_selesai: '', kategori_akses: 'Merah (Pit Worker)', area_ids: [], jenis_kendaraan: [],
             alasan_justifikasi: '', tanggal_berlaku_sim: '', tanggal_berlaku_sio: '', perlu_izin_khusus: false, izin_panas: false, izin_ketinggian: false, izin_perancah: false,
@@ -310,7 +317,7 @@ export default function Permit() {
             jabatan: p.karyawan?.jabatan || '',
             unit_kerja: p.karyawan?.unit_kerja || '',
             id_instansi: p.karyawan?.id_instansi || '',
-            kategori_pemohon: p.kategori_pemohon || 'Internal',
+            kategori_pemohon: role === 'Koordinator_Vendor' ? 'Kontraktor' : (p.kategori_pemohon || 'Internal'),
             riwayat_pendidikan: p.karyawan?.riwayat_pendidikan || '',
             sertifikasi_keahlian: p.karyawan?.sertifikasi_keahlian || '',
             pendidikan_khusus: p.karyawan?.pendidikan_khusus || '',
@@ -407,8 +414,8 @@ export default function Permit() {
         if (p.id_proyek && p.proyek_vendor) {
             const proyek = p.proyek_vendor;
             if ((!proyek.file_surat_penunjukan || !proyek.file_kontrak_kerja) || 
-                (proyek.jenis_proyek !== 'Perpanjangan' && (!proyek.file_life_saving_talk || !proyek.file_jsa || !proyek.file_izin_kerja_umum))) {
-                toast.error('Dokumen Bersama Proyek (Safety / Kontrak) belum lengkap! Silakan lengkapi melalui Edit terlebih dahulu.');
+                (proyek.jenis_proyek !== 'Perpanjangan' && !proyek.file_jsa)) {
+                toast.error('Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap! Silakan lengkapi melalui Edit terlebih dahulu.');
                 return;
             }
         }
@@ -420,15 +427,15 @@ export default function Permit() {
         } else if (role === 'Koordinator_Vendor') {
             baseFiles = ['file_foto', 'file_data_diri', 'file_mcu', 'file_bpjs'];
             if (user?.jenis_vendor === 'Kontrak' && !p.id_proyek) {
-                baseFiles.push('file_surat_penunjukan', 'file_kontrak_kerja');
+                baseFiles.push('file_kontrak_kerja');
             }
         } else if (p.kategori_pemohon === 'Internal') {
-            baseFiles = ['file_foto', 'file_surat_penunjukan', 'file_data_diri', 'file_mcu', 'file_prosedur', 'file_bpjs', 'file_izin_kerja_berbahaya', 'file_serah_terima_apd', 'file_kontrak_kerja'];
+            baseFiles = ['file_foto', 'file_data_diri', 'file_mcu', 'file_prosedur', 'file_bpjs', 'file_izin_kerja_berbahaya', 'file_serah_terima_apd', 'file_kontrak_kerja'];
         } else if (p.kategori_pemohon === 'Kontraktor') {
             if (p.id_proyek) {
                 baseFiles = ['file_foto', 'file_data_diri', 'file_bpjs', 'file_mcu'];
             } else {
-                baseFiles = ['file_foto', 'file_surat_penunjukan', 'file_data_diri', 'file_permohonan_kimper', 'file_bpjs', 'file_mcu', 'file_kontrak_kerja'];
+                baseFiles = ['file_foto', 'file_data_diri', 'file_permohonan_kimper', 'file_bpjs', 'file_mcu', 'file_kontrak_kerja'];
             }
         }
 
@@ -499,6 +506,25 @@ export default function Permit() {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
+        if (name === 'kategori_pemohon') {
+            if (value === 'Internal') {
+                setFormData(prev => ({
+                    ...prev,
+                    kategori_pemohon: value,
+                    jenis_permintaan: 'Permanent',
+                    tanggal_mulai: '',
+                    tanggal_selesai: ''
+                }));
+                return;
+            } else if (value === 'Magang') {
+                setFormData(prev => ({
+                    ...prev,
+                    kategori_pemohon: value,
+                    jenis_permintaan: prev.jenis_permintaan || 'Sementara'
+                }));
+                return;
+            }
+        }
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
@@ -587,8 +613,8 @@ export default function Permit() {
 
             if (formData.id_proyek && proyekData) {
                 if ((!proyekData.file_surat_penunjukan || !proyekData.file_kontrak_kerja) || 
-                    (proyekData.jenis_proyek !== 'Perpanjangan' && (!proyekData.file_life_saving_talk || !proyekData.file_jsa || !proyekData.file_izin_kerja_umum))) {
-                    const errMsg = 'Dokumen Bersama Proyek (Safety / Kontrak) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.';
+                    (proyekData.jenis_proyek !== 'Perpanjangan' && !proyekData.file_jsa)) {
+                    const errMsg = 'Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.';
                     setError(errMsg);
                     toast.error(errMsg);
                     setSubmitLoading(false);
@@ -597,7 +623,12 @@ export default function Permit() {
             }
 
             const requiredFiles = getRequiredFiles();
-            const missingFiles = requiredFiles.filter(req => req.id !== 'file_hasil_assessment' && !files[req.id] && !formData[req.id]);
+            const missingFiles = requiredFiles.filter(req => 
+                req.id !== 'file_hasil_assessment' && 
+                req.id !== 'file_surat_penunjukan' && 
+                !files[req.id] && 
+                !formData[req.id]
+            );
             
             if (missingFiles.length > 0) {
                 const errMsg = `Harap unggah dokumen persyaratan berikut untuk mengirim pengajuan: ${missingFiles.map(m => m.label).join(', ')}`;
@@ -753,7 +784,7 @@ export default function Permit() {
             }
 
             if (user?.jenis_vendor === 'Kontrak' && !formData.id_proyek) {
-                files.push({ id: 'file_surat_penunjukan', label: 'Surat Penunjukan dari Perusahaan' });
+                files.push({ id: 'file_surat_penunjukan', label: 'Surat Penunjukan dari Perusahaan (Opsional)' });
                 files.push({ id: 'file_kontrak_kerja', label: 'Kontrak Kerja' });
             }
 
@@ -762,7 +793,7 @@ export default function Permit() {
             baseFiles = [
                 { id: 'file_foto', label: 'Foto Profil (Untuk ID Card)' },
                 { id: 'file_data_diri', label: 'KTP / Data Diri' },
-                { id: 'file_surat_penunjukan', label: 'Surat Permohonan Mine Permit' }
+                { id: 'file_surat_penunjukan', label: 'Surat Permohonan Mine Permit (Opsional)' }
             ];
         } else if (formData.kategori_pemohon === 'Kontraktor') {
             if (formData.id_proyek) {
@@ -776,7 +807,7 @@ export default function Permit() {
             } else {
                 baseFiles = [
                     { id: 'file_foto', label: 'Foto Profil (Untuk ID Card)' },
-                    { id: 'file_surat_penunjukan', label: 'Surat Penunjukan Perusahaan' },
+                    { id: 'file_surat_penunjukan', label: 'Surat Penunjukan Perusahaan (Opsional)' },
                     { id: 'file_data_diri', label: 'KTP / Data Diri' },
                     { id: 'file_permohonan_kimper', label: 'Surat Permohonan Penerbitan Kimper' },
                     { id: 'file_bpjs', label: 'BPJS Ketenagakerjaan' },
@@ -1059,13 +1090,20 @@ export default function Permit() {
                                 </div>
                             </div>
 
-                            {role !== 'Koordinator_Vendor' && (
+                            {role !== 'Koordinator_Vendor' ? (
                                 <div className="space-y-2 md:w-1/2 p-5 bg-gray-50/50 rounded-2xl border border-gray-100">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Kategori Pemohon <span className="text-red-500">*</span></label>
                                     <select name="kategori_pemohon" value={formData.kategori_pemohon} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 bg-white font-medium text-gray-800 transition-all outline-none">
-                                        <option value="Magang">Mahasiswa / Siswa</option>
-                                        <option value="Internal">Karyawan Internal</option>
+                                        <option value="Internal">Karyawan / Outsourcing</option>
+                                        <option value="Magang">Mahasiswa / Siswa (Magang)</option>
                                     </select>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 md:w-1/2 p-5 bg-gray-50/50 rounded-2xl border border-gray-100">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Kategori Pemohon</label>
+                                    <div className="px-3 py-2.5 rounded-lg bg-gray-100 font-semibold text-gray-700 text-sm">
+                                        Kontraktor / Vendor ({user?.jenis_vendor || 'Vendor'})
+                                    </div>
                                 </div>
                             )}
 
@@ -1162,29 +1200,41 @@ export default function Permit() {
                                             <option value="Perpanjangan">Perpanjangan</option>
                                         </select>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Permintaan & Durasi <span className="text-red-500">*</span></label>
-                                        <div className="flex gap-3">
-                                            <div className="w-1/3">
-                                                <select
-                                                    name="jenis_permintaan"
-                                                    value={(role === 'Koordinator_Vendor' && user?.jenis_vendor === 'SPK') ? 'Sementara' : formData.jenis_permintaan}
-                                                    onChange={handleInputChange}
-                                                    disabled={role === 'Koordinator_Vendor' && user?.jenis_vendor === 'SPK'}
-                                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                                >
-                                                    <option value="Permanent">Permanent</option>
-                                                    <option value="Sementara">Sementara</option>
-                                                </select>
-                                            </div>
-                                            <div className="w-1/3 relative">
-                                                <input type="date" name="tanggal_mulai" value={formData.tanggal_mulai} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none text-xs sm:text-sm" title="Tanggal Mulai" required />
-                                            </div>
-                                            <div className="w-1/3 relative">
-                                                <input type="date" name="tanggal_selesai" value={formData.tanggal_selesai} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none text-xs sm:text-sm" title="Tanggal Selesai" required />
+                                    {(role !== 'Koordinator_Vendor' && formData.kategori_pemohon === 'Internal') ? (
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Masa Berlaku Izin Permit</label>
+                                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm flex items-center gap-2.5 font-medium">
+                                                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                                                <div>
+                                                    <span className="font-bold">Permanent</span>
+                                                    <p className="text-xs text-emerald-700 mt-0.5">Berlaku permanen (Karyawan Internal).</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Permintaan & Durasi <span className="text-red-500">*</span></label>
+                                            <div className="flex gap-3">
+                                                <div className="w-1/3">
+                                                    <select
+                                                        name="jenis_permintaan"
+                                                        value={formData.jenis_permintaan}
+                                                        onChange={handleInputChange}
+                                                        className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none"
+                                                    >
+                                                        <option value="Permanent">Permanent</option>
+                                                        <option value="Sementara">Sementara</option>
+                                                    </select>
+                                                </div>
+                                                <div className="w-1/3 relative">
+                                                    <input type="date" name="tanggal_mulai" value={formData.tanggal_mulai} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none text-xs sm:text-sm" title="Tanggal Mulai" required />
+                                                </div>
+                                                <div className="w-1/3 relative">
+                                                    <input type="date" name="tanggal_selesai" value={formData.tanggal_selesai} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none text-xs sm:text-sm" title="Tanggal Selesai" required />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Kendaraan (Optional)</label>
                                         <div className="bg-white border-2 border-gray-100 rounded-2xl max-h-48 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-sm">
@@ -1294,8 +1344,8 @@ export default function Permit() {
                                         (fileReq.id === 'file_sim_b2' && (files['file_sio'] || formData['file_sio'])) ||
                                         (fileReq.id === 'file_sio' && (files['file_sim_b2'] || formData['file_sim_b2']))
                                     );
-                                    const isStrictlyRequired = !formData.is_draft && !files[fileReq.id] && !formData[fileReq.id] && !isOrRequired;
-                                    const isAssessment = fileReq.id === 'file_hasil_assessment';
+                                    const isOptionalFile = fileReq.id === 'file_hasil_assessment' || fileReq.id === 'file_surat_penunjukan';
+                                    const isStrictlyRequired = !formData.is_draft && !files[fileReq.id] && !formData[fileReq.id] && !isOrRequired && !isOptionalFile;
                                     const hasFile = files[fileReq.id] || formData[fileReq.id];
 
                                     return (
@@ -1332,7 +1382,7 @@ export default function Permit() {
                                                         {hasFile ? <CheckCircle2 size={20} /> : <FileText size={20} />}
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-semibold text-gray-800">{fileReq.label} {isStrictlyRequired && !isAssessment && <span className="text-red-500">*</span>}</div>
+                                                        <div className="text-sm font-semibold text-gray-800">{fileReq.label} {isStrictlyRequired && <span className="text-red-500">*</span>}</div>
                                                         <div className="text-xs text-gray-500">{files[fileReq.id] ? files[fileReq.id].name : (formData[fileReq.id] ? 'Tersimpan' : 'PDF/JPG, Maks 5MB')}</div>
                                                     </div>
                                                 </div>
@@ -1345,7 +1395,7 @@ export default function Permit() {
                                                         onChange={handleFileChange}
                                                         className="sr-only"
                                                         accept=".pdf,.jpg,.jpeg,.png"
-                                                        required={isStrictlyRequired && !isAssessment}
+                                                        required={isStrictlyRequired}
                                                     />
                                                 </label>
                                             </div>
@@ -1513,12 +1563,12 @@ export default function Permit() {
                             )}
                             {(formData.id_proyek && proyekData && (
                                 (!proyekData.file_surat_penunjukan || !proyekData.file_kontrak_kerja) || 
-                                (proyekData.jenis_proyek !== 'Perpanjangan' && (!proyekData.file_life_saving_talk || !proyekData.file_jsa || !proyekData.file_izin_kerja_umum))
+                                (proyekData.jenis_proyek !== 'Perpanjangan' && !proyekData.file_jsa)
                             )) ? (
                                 <div className="p-4 bg-red-50 text-red-700 rounded-2xl border-2 border-red-100 flex items-start gap-4">
                                     <div className="p-2 bg-red-100 text-red-600 rounded-xl shrink-0"><AlertCircle size={20} /></div>
                                     <div className="text-sm font-medium leading-relaxed mt-1">
-                                        Tombol <span className="font-bold uppercase tracking-wide">Kirim Pengajuan</span> dinonaktifkan karena Dokumen Bersama Proyek (Safety / Kontrak) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.
+                                        Tombol <span className="font-bold uppercase tracking-wide">Kirim Pengajuan</span> dinonaktifkan karena Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.
                                     </div>
                                 </div>
                             ) : null}
@@ -1548,12 +1598,12 @@ export default function Permit() {
                                     disabled={
                                         submitLoading || 
                                         getRequiredFiles().filter(req => {
-                                            if (req.id === 'file_hasil_assessment') return false;
+                                            if (req.id === 'file_hasil_assessment' || req.id === 'file_surat_penunjukan') return false;
                                             return !files[req.id] && !formData[req.id];
                                         }).length > 0 ||
                                         (formData.id_proyek && proyekData && (
                                             (!proyekData.file_surat_penunjukan || !proyekData.file_kontrak_kerja) || 
-                                            (proyekData.jenis_proyek !== 'Perpanjangan' && (!proyekData.file_life_saving_talk || !proyekData.file_jsa || !proyekData.file_izin_kerja_umum))
+                                            (proyekData.jenis_proyek !== 'Perpanjangan' && !proyekData.file_jsa)
                                         ))
                                     } 
                                     className="w-full sm:w-auto px-10 py-3.5 rounded-xl bg-[#E11D2E] hover:bg-[#C91929] hover:shadow-lg hover:shadow-red-500/30 text-white font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none"
@@ -1617,6 +1667,93 @@ export default function Permit() {
                             </span>
                         </div>
                     </div>
+
+                    {/* Alur Persetujuan Stepper */}
+                    {(() => {
+                        const isPerpanjangan = p.jenis_izin === 'Perpanjangan';
+                        const steps = isPerpanjangan ? [
+                            { key: 'Draft', label: 'Pengajuan' },
+                            { key: 'Pending_Admin', label: 'Verifikasi Admin' },
+                            { key: 'Pending_HSE', label: 'Kasie HSE' },
+                            { key: 'Pending_KTT', label: 'KTT' },
+                            { key: 'Siap_Cetak', label: 'Siap Cetak' }
+                        ] : [
+                            { key: 'Draft', label: 'Pengajuan' },
+                            { key: 'Pending_Admin', label: 'Verifikasi Admin' },
+                            { key: 'Pending_Kasie_Pemohon', label: 'Kasie Pemohon' },
+                            { key: 'Pending_HSE', label: 'Kasie HSE' },
+                            { key: 'Pending_KTT', label: 'KTT' },
+                            { key: 'Siap_Cetak', label: 'Siap Cetak' }
+                        ];
+
+                        const getStepStatus = (stepKey, index) => {
+                            if (p.status_berkas === 'Ditolak') return 'rejected';
+                            if (p.status_berkas === 'Siap_Cetak' || p.status_berkas === 'Aktif') return 'completed';
+                            
+                            let activeIndex = steps.findIndex(s => s.key === p.status_berkas);
+                            if (activeIndex === -1) {
+                                if (p.status_berkas === 'Menunggu_Ujian') activeIndex = 1;
+                                else activeIndex = 0;
+                            }
+                            if (index < activeIndex) return 'completed';
+                            if (index === activeIndex) return 'current';
+                            return 'upcoming';
+                        };
+
+                        return (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b border-gray-100 gap-2">
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                            Alur Persetujuan Permit
+                                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                                                isPerpanjangan ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                            }`}>
+                                                {p.jenis_izin || 'Baru'}
+                                            </span>
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            {isPerpanjangan 
+                                                ? 'Perpanjangan: Setelah Admin langsung ke Kasie HSE (Kasie Pemohon dilewati).' 
+                                                : 'Izin Baru: Wajib persetujuan Kasie Pemohon sebelum ke Kasie HSE.'}
+                                        </p>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        Tahap: <span className="font-bold text-gray-800">{p.status_berkas.replace(/_/g, ' ')}</span>
+                                    </div>
+                                </div>
+
+                                <div className={`grid gap-2.5 ${isPerpanjangan ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'}`}>
+                                    {steps.map((st, idx) => {
+                                        const status = getStepStatus(st.key, idx);
+                                        return (
+                                            <div key={st.key} className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                                                status === 'completed' 
+                                                    ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800' :
+                                                status === 'current'
+                                                    ? 'bg-blue-50 border-blue-400 text-blue-900 shadow-sm ring-2 ring-blue-500/20' :
+                                                    'bg-gray-50/50 border-gray-200 text-gray-400'
+                                            }`}>
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs mb-1.5 ${
+                                                    status === 'completed'
+                                                        ? 'bg-emerald-600 text-white' :
+                                                    status === 'current'
+                                                        ? 'bg-blue-600 text-white animate-pulse' :
+                                                        'bg-gray-200 text-gray-500'
+                                                }`}>
+                                                    {status === 'completed' ? '✓' : idx + 1}
+                                                </div>
+                                                <p className="text-xs font-bold leading-tight line-clamp-1">{st.label}</p>
+                                                <span className="text-[10px] mt-1 font-semibold">
+                                                    {status === 'completed' ? 'Selesai' : status === 'current' ? 'Sedang Diproses' : 'Menunggu'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Alert Penolakan */}
                     {p.status_berkas === 'Ditolak' && p.riwayat_approvals && p.riwayat_approvals.length > 0 && (
@@ -1821,9 +1958,16 @@ export default function Permit() {
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Durasi Permit</p>
                                         <p className="font-medium text-gray-800 bg-gray-50 inline-block px-2.5 py-1 rounded-md border border-gray-100">
-                                            {p.tanggal_mulai ? new Date(p.tanggal_mulai).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-'} 
-                                            <span className="mx-2 text-gray-400">s/d</span> 
-                                            {p.tanggal_selesai ? new Date(p.tanggal_selesai).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-'}
+                                            {(!p.tanggal_mulai && !p.tanggal_selesai) ? (
+                                                <span className="font-bold text-emerald-700">Permanent</span>
+                                            ) : (
+                                                <>
+                                                    {p.jenis_permintaan === 'Permanent' && <span className="font-bold text-emerald-700 mr-2">Permanent:</span>}
+                                                    {p.tanggal_mulai ? new Date(p.tanggal_mulai).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-'} 
+                                                    <span className="mx-2 text-gray-400">s/d</span> 
+                                                    {p.tanggal_selesai ? new Date(p.tanggal_selesai).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-'}
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                     <div>
@@ -1971,17 +2115,45 @@ export default function Permit() {
                             </button>
                         )}
                         
-                        {/* Approve / Reject buttons based on role and status */}
-                        {role !== 'Pemohon_Mandiri' && role !== 'Koordinator_Vendor' && p.status_berkas.includes('Pending') && (
-                            <>
-                                <button onClick={() => setRejectModal({ isOpen: true, id_pengajuan: p.id_pengajuan, alasan: '' })} className="px-6 py-2.5 rounded-xl border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 hover:border-red-300 transition-colors">
-                                    Tolak Pengajuan
-                                </button>
-                                <button onClick={() => setApproveModal({ isOpen: true, id_pengajuan: p.id_pengajuan })} className="px-8 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5">
-                                    Setujui Pengajuan
-                                </button>
-                            </>
-                        )}
+                        {/* Approve / Reject buttons strictly based on role matching the pending stage */}
+                        {(() => {
+                            const isCurrentApprover = (
+                                (p.status_berkas === 'Pending_Admin' && role === 'Admin') ||
+                                (p.status_berkas === 'Pending_Kasie_Pemohon' && role === 'Kasie_Pemohon') ||
+                                (p.status_berkas === 'Pending_HSE' && role === 'Kasie_HSE') ||
+                                (p.status_berkas === 'Pending_KTT' && role === 'KTT')
+                            );
+
+                            if (isCurrentApprover) {
+                                return (
+                                    <>
+                                        <button onClick={() => setRejectModal({ isOpen: true, id_pengajuan: p.id_pengajuan, alasan: '' })} className="px-6 py-2.5 rounded-xl border-2 border-red-200 text-red-600 font-bold hover:bg-red-50 hover:border-red-300 transition-colors">
+                                            Tolak Pengajuan
+                                        </button>
+                                        <button onClick={() => setApproveModal({ isOpen: true, id_pengajuan: p.id_pengajuan, pengajuan: p })} className="px-8 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5">
+                                            Setujui Pengajuan
+                                        </button>
+                                    </>
+                                );
+                            }
+
+                            if (p.status_berkas && p.status_berkas.includes('Pending')) {
+                                const requiredRoleName = 
+                                    p.status_berkas === 'Pending_Admin' ? 'Admin' :
+                                    p.status_berkas === 'Pending_Kasie_Pemohon' ? 'Kasie Pemohon' :
+                                    p.status_berkas === 'Pending_HSE' ? 'Kasie HSE' :
+                                    p.status_berkas === 'Pending_KTT' ? 'KTT' : '';
+
+                                return (
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 rounded-xl border border-amber-200 text-xs font-semibold">
+                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                        Menunggu Persetujuan dari {requiredRoleName}
+                                    </div>
+                                );
+                            }
+
+                            return null;
+                        })()}
                     </div>
                 </div>
             </div>
@@ -2016,10 +2188,55 @@ export default function Permit() {
             {approveModal.isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">Setujui Pengajuan</h3>
-                        <p className="text-sm text-gray-600 mb-6">Apakah Anda yakin ingin menyetujui pengajuan permit ini?</p>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                                <ShieldCheck size={22} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 leading-tight">Konfirmasi Persetujuan</h3>
+                                <p className="text-xs text-gray-500">ID Pengajuan #{approveModal.id_pengajuan}</p>
+                            </div>
+                        </div>
+
+                        {approveModal.pengajuan && (
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-5 text-sm space-y-2">
+                                <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                                    <span className="text-gray-500 text-xs">Jenis Izin</span>
+                                    <span className={`font-bold text-xs px-2.5 py-0.5 rounded-full ${
+                                        approveModal.pengajuan.jenis_izin === 'Perpanjangan' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    }`}>
+                                        {approveModal.pengajuan.jenis_izin || 'Baru'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                                    <span className="text-gray-500 text-xs">Tahap Sekarang</span>
+                                    <span className="font-semibold text-gray-800 text-xs">{approveModal.pengajuan.status_berkas.replace(/_/g, ' ')}</span>
+                                </div>
+                                <div className="flex justify-between items-start pt-1">
+                                    <span className="text-gray-500 text-xs shrink-0">Alur Berikutnya</span>
+                                    <span className="font-bold text-right text-xs text-emerald-700">
+                                        {approveModal.pengajuan.status_berkas === 'Pending_Admin' ? (
+                                            approveModal.pengajuan.jenis_izin === 'Perpanjangan'
+                                                ? '➡️ Langsung Kasie HSE (Kasie Pemohon dilewati)'
+                                                : '➡️ Menunggu Kasie Pemohon'
+                                        ) : approveModal.pengajuan.status_berkas === 'Pending_Kasie_Pemohon' ? (
+                                            '➡️ Menunggu Kasie HSE'
+                                        ) : approveModal.pengajuan.status_berkas === 'Pending_HSE' ? (
+                                            '➡️ Menunggu KTT'
+                                        ) : approveModal.pengajuan.status_berkas === 'Pending_KTT' ? (
+                                            '➡️ Siap Cetak (Disetujui Sepenuhnya)'
+                                        ) : 'Lanjut Tahap Berikutnya'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        <p className="text-sm text-gray-600 mb-6">
+                            Apakah Anda yakin ingin menyetujui pengajuan permit ini dan meneruskannya ke tahap berikutnya?
+                        </p>
+
                         <div className="flex gap-3 justify-end">
-                            <button onClick={() => setApproveModal({ isOpen: false, id_pengajuan: null })} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+                            <button onClick={() => setApproveModal({ isOpen: false, id_pengajuan: null, pengajuan: null })} className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
                                 Batal
                             </button>
                             <button onClick={handleApprove} disabled={loading} className="px-5 py-2.5 rounded-xl bg-[#E11D2E] text-white font-medium hover:bg-[#B0121F] shadow-md transition-all flex items-center gap-2 disabled:opacity-50">

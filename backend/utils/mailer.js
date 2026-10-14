@@ -137,7 +137,7 @@ const sendSimExpiryNotification = async (toEmail, permit, sisaHari) => {
                 <h2 style="color: #E11D2E;">Sistem Permit PT Semen Padang</h2>
                 <p>Halo,</p>
                 <p>Sistem kami mendeteksi bahwa Masa Berlaku SIM/SIO untuk pengajuan permit Anda ${sisaHari <= 0 ? '<strong>telah habis</strong>' : `akan habis dalam <strong>${sisaHari} hari</strong>`}.</p>
-                <p><strong>Tanggal Berakhir:</strong> ${permit.tanggal_berlaku_sim}</p>
+                <p><strong>Tanggal Berakhir:</strong> ${permit.tanggal_berlaku_sim || permit.tanggal_berlaku_sio || '-'}</p>
                 <p>Harap segera memperbarui SIM/SIO Anda dan melapor ke admin permit PT Semen Padang agar izin Anda tetap aktif.</p>
                 <hr />
                 <p style="font-size: 12px; color: #888;">Email ini dikirim otomatis oleh sistem.</p>
@@ -165,7 +165,11 @@ const sendPermitNotification = async (toEmail, namaPemohon, perusahaan, actionTy
     } else if (actionType === 'admin') {
         subject = "Pengajuan Permit Perlu Verifikasi Kasie Pemohon";
         messageTitle = "Verifikasi Kasie Pemohon";
-        messageBody = `Pengajuan permit atas nama <strong>${namaPemohon} (${perusahaan})</strong> telah diverifikasi oleh Admin dan sekarang menunggu persetujuan Kasie Pemohon.`;
+        messageBody = `Pengajuan permit baru atas nama <strong>${namaPemohon} (${perusahaan})</strong> telah diverifikasi oleh Admin dan sekarang menunggu persetujuan Kasie Pemohon.`;
+    } else if (actionType === 'admin_hse') {
+        subject = "Pengajuan Perpanjangan Permit Perlu Verifikasi Kasie HSE";
+        messageTitle = "Verifikasi Kasie HSE (Perpanjangan)";
+        messageBody = `Pengajuan perpanjangan permit atas nama <strong>${namaPemohon} (${perusahaan})</strong> telah diverifikasi oleh Admin dan langsung diteruskan untuk persetujuan Kasie HSE.`;
     } else if (actionType === 'kasie_pemohon') {
         subject = "Pengajuan Permit Perlu Verifikasi Kasie HSE";
         messageTitle = "Verifikasi Kasie HSE";

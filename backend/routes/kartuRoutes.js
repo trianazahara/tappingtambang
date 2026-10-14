@@ -58,27 +58,43 @@ router.post('/proses', async (req, res) => {
             }
         }
 
-        // 2. Buat Data Kartu Akses
+        // 2. Parse warna_kartu agar sesuai ENUM ('Merah', 'Orange', 'Biru', 'Hijau')
+        let parsedWarna = 'Merah';
+        const rawWarna = (warna_kartu || pengajuan.kategori_akses || '').toLowerCase();
+        if (rawWarna.includes('biru')) parsedWarna = 'Biru';
+        else if (rawWarna.includes('hijau')) parsedWarna = 'Hijau';
+        else if (rawWarna.includes('orange')) parsedWarna = 'Orange';
+        else parsedWarna = 'Merah';
+
+        // Parse jenis_teknologi (NFC / Barcode)
+        let parsedTeknologi = 'Barcode';
+        if (jenis_teknologi && jenis_teknologi.toUpperCase().includes('NFC')) {
+            parsedTeknologi = 'NFC';
+        }
+
+        // Berlaku hingga (bisa null jika permanent)
+        const berlakuHingga = pengajuan.tanggal_selesai ? pengajuan.tanggal_selesai : null;
+
+        // 3. Buat Data Kartu Akses
         // Hapus jika sebelumnya sudah ada (regenerate)
         await KartuAkses.destroy({ where: { id_karyawan: pengajuan.id_karyawan } });
         
-        // Asumsi masa berlaku kartu = masa berlaku pengajuan permit
         const kartu = await KartuAkses.create({
             id_karyawan: pengajuan.id_karyawan,
             uid_kartu: uid_kartu || `UID-${Date.now()}`, // Kalau barcode, generate UID dummy
             nomor_permit: nomor_permit,
-            jenis_teknologi: jenis_teknologi || 'Barcode',
-            warna_kartu: warna_kartu || 'Merah',
+            jenis_teknologi: parsedTeknologi,
+            warna_kartu: parsedWarna,
             status_kartu: 'Aktif',
             tanggal_cetak: new Date(),
-            berlaku_hingga: pengajuan.tanggal_selesai,
+            berlaku_hingga: berlakuHingga,
             nomor_license: nomor_license || null,
             type_unit: type_unit || null,
             jenis_permit: jenis_permit || null,
             issued_at: issued_at || null
         });
 
-        // 3. Update Status Pengajuan
+        // 4. Update Status Pengajuan
         pengajuan.status_berkas = 'Aktif';
         await pengajuan.save();
 

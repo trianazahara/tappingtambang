@@ -62,12 +62,12 @@ export default function Proyek() {
 
     const handleKirimAdmin = async (id_pengajuan) => {
         if (selectedProyek) {
-            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && (!selectedProyek.file_life_saving_talk || !selectedProyek.file_jsa || !selectedProyek.file_izin_kerja_umum)) {
-                toast.error('Dokumen Safety Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
+            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !selectedProyek.file_jsa) {
+                toast.error('Dokumen Safety JSA Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
                 return;
             }
             if (!selectedProyek.file_surat_penunjukan || !selectedProyek.file_kontrak_kerja) {
-                toast.error('Dokumen Bersama Proyek wajib dilengkapi terlebih dahulu.');
+                toast.error('Dokumen Bersama Proyek (Surat Penunjukan & Kontrak) wajib dilengkapi terlebih dahulu.');
                 return;
             }
         }
@@ -98,12 +98,12 @@ export default function Proyek() {
     };
     const handleKirimSemuaAdmin = async (id_proyek) => {
         if (selectedProyek && selectedProyek.id_proyek === id_proyek) {
-            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && (!selectedProyek.file_life_saving_talk || !selectedProyek.file_jsa || !selectedProyek.file_izin_kerja_umum)) {
-                toast.error('Dokumen Safety Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
+            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !selectedProyek.file_jsa) {
+                toast.error('Dokumen Safety JSA Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
                 return;
             }
             if (!selectedProyek.file_surat_penunjukan || !selectedProyek.file_kontrak_kerja) {
-                toast.error('Dokumen Bersama Proyek wajib dilengkapi terlebih dahulu.');
+                toast.error('Dokumen Bersama Proyek (Surat Penunjukan & Kontrak) wajib dilengkapi terlebih dahulu.');
                 return;
             }
         }
@@ -529,7 +529,7 @@ export default function Proyek() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Life Saving Talk (Maks 5MB)</label>
+                                    <label className="block text-sm font-medium text-gray-700">Life Saving Talk (Opsional, Maks 5MB)</label>
                                     <input type="file" name="file_life_saving_talk" onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_life_saving_talk && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
@@ -539,14 +539,14 @@ export default function Proyek() {
                                     {selectedProyek?.file_jsa && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Izin Kerja Umum (Maks 5MB)</label>
+                                    <label className="block text-sm font-medium text-gray-700">Izin Kerja Umum (Opsional, Maks 5MB)</label>
                                     <input type="file" name="file_izin_kerja_umum" onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_izin_kerja_umum && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                             </div>
                             
                             <div className="pt-4 border-t mt-4">
-                                <h3 className="font-semibold text-gray-800 mb-3">Izin Kerja Khusus (Centang jika diperlukan)</h3>
+                                <h3 className="font-semibold text-gray-800 mb-3">Izin Kerja Khusus (Opsional - Centang jika diperlukan)</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {[
                                         { key: 'file_izin_panas', label: 'Izin Panas Berisiko' },
