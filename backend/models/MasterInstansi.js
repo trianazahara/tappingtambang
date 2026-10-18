@@ -12,8 +12,9 @@ const MasterInstansi = db.define('master_instansi', {
         allowNull: false
     },
     kategori_instansi: {
-        type: DataTypes.ENUM('Vendor Outsourcing', 'Universitas', 'Dinas', 'Internal'),
-        allowNull: false
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: 'Vendor Outsourcing'
     },
     status_instansi: {
         type: DataTypes.ENUM('Aktif', 'Nonaktif'),

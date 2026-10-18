@@ -1,7 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { loginUjian, submitUjian } = require('../controllers/ujianController');
+const { 
+    loginUjian, 
+    submitUjian, 
+    getPengaturanUjian, 
+    updatePengaturanUjian 
+} = require('../controllers/ujianController');
 
+router.get('/setting', getPengaturanUjian);
+router.put('/setting', updatePengaturanUjian);
 router.post('/login', loginUjian);
 router.post('/submit', submitUjian);
 

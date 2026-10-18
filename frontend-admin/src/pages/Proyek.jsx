@@ -189,14 +189,27 @@ export default function Proyek() {
 
     const handleSafetyFileChange = (e) => {
         const { name, files: fileList } = e.target;
-        if (fileList[0] && fileList[0].size > 5 * 1024 * 1024) {
-            setSafetyError('Ukuran file tidak boleh lebih dari 5MB');
-            toast.error('Ukuran file tidak boleh lebih dari 5MB');
-            setTimeout(() => setSafetyError(''), 3000);
-            e.target.value = null;
-            return;
+        if (fileList.length > 0) {
+            const file = fileList[0];
+            const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExt)) {
+                setSafetyError('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                toast.error('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                e.target.value = '';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                setSafetyError('Ukuran file tidak boleh lebih dari 5MB');
+                toast.error('Ukuran file tidak boleh lebih dari 5MB');
+                setTimeout(() => setSafetyError(''), 3000);
+                e.target.value = '';
+                return;
+            }
+            setSafetyFiles(prev => ({ ...prev, [name]: file }));
         }
-        setSafetyFiles(prev => ({ ...prev, [name]: fileList[0] }));
     };
 
     const handleUploadSafetySubmit = async (e) => {
@@ -232,14 +245,27 @@ export default function Proyek() {
 
     const handleFileChange = (e) => {
         const { name, files: fileList } = e.target;
-        if (fileList[0] && fileList[0].size > 5 * 1024 * 1024) {
-            setError('Ukuran file tidak boleh lebih dari 5MB');
-            toast.error('Ukuran file tidak boleh lebih dari 5MB');
-            setTimeout(() => setError(''), 3000);
-            e.target.value = null;
-            return;
+        if (fileList.length > 0) {
+            const file = fileList[0];
+            const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExt)) {
+                setError('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                toast.error('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                e.target.value = '';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                setError('Ukuran file tidak boleh lebih dari 5MB');
+                toast.error('Ukuran file tidak boleh lebih dari 5MB');
+                setTimeout(() => setError(''), 3000);
+                e.target.value = '';
+                return;
+            }
+            setFiles(prev => ({ ...prev, [name]: file }));
         }
-        setFiles(prev => ({ ...prev, [name]: fileList[0] }));
     };
 
     const handleSubmitProyek = async (e) => {
@@ -386,17 +412,17 @@ export default function Proyek() {
                                 <div className="border border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 cursor-pointer">
                                     <label className="cursor-pointer">
                                         <span className="block text-sm font-medium text-gray-700 mb-1">
-                                            Surat Penunjukan / Permohonan Mine Permit (Maks 5MB)
+                                            Surat Penunjukan / Permohonan Mine Permit (PDF, PNG, JPG, JPEG, Maks 5MB)
                                         </span>
                                         {editId && <span className="block text-xs font-semibold text-green-600 mb-2 bg-green-50 px-2 py-1 rounded inline-block">✓ Dokumen sudah ada (Unggah baru untuk mengganti)</span>}
-                                        <input type="file" name="file_surat_penunjukan" onChange={handleFileChange} required={!editId} className="text-xs text-gray-500 block w-full" />
+                                        <input type="file" name="file_surat_penunjukan" onChange={handleFileChange} required={!editId} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="text-xs text-gray-500 block w-full" />
                                     </label>
                                 </div>
                                 <div className="border border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 cursor-pointer">
                                     <label className="cursor-pointer">
-                                        <span className="block text-sm font-medium text-gray-700 mb-1">Surat PL / PO / Kontrak / Berita Acara Mulai Kerja (Maks 5MB)</span>
+                                        <span className="block text-sm font-medium text-gray-700 mb-1">Surat PL / PO / Kontrak / Berita Acara Mulai Kerja (PDF, PNG, JPG, JPEG, Maks 5MB)</span>
                                         {editId && <span className="block text-xs font-semibold text-green-600 mb-2 bg-green-50 px-2 py-1 rounded inline-block">✓ Dokumen sudah ada (Unggah baru untuk mengganti)</span>}
-                                        <input type="file" name="file_kontrak_kerja" onChange={handleFileChange} required={!editId} className="text-xs text-gray-500 block w-full" />
+                                        <input type="file" name="file_kontrak_kerja" onChange={handleFileChange} required={!editId} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="text-xs text-gray-500 block w-full" />
                                     </label>
                                 </div>
                             </div>
@@ -529,18 +555,18 @@ export default function Proyek() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Life Saving Talk (Opsional, Maks 5MB)</label>
-                                    <input type="file" name="file_life_saving_talk" onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
+                                    <label className="block text-sm font-medium text-gray-700">Life Saving Talk (PDF, PNG, JPG, JPEG, Maks 5MB)</label>
+                                    <input type="file" name="file_life_saving_talk" onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_life_saving_talk && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Job Safety Analysis (JSA) (Maks 5MB)</label>
-                                    <input type="file" name="file_jsa" onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
+                                    <label className="block text-sm font-medium text-gray-700">Job Safety Analysis (JSA) (PDF, PNG, JPG, JPEG, Maks 5MB)</label>
+                                    <input type="file" name="file_jsa" onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_jsa && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Izin Kerja Umum (Opsional, Maks 5MB)</label>
-                                    <input type="file" name="file_izin_kerja_umum" onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
+                                    <label className="block text-sm font-medium text-gray-700">Izin Kerja Umum (PDF, PNG, JPG, JPEG, Maks 5MB)</label>
+                                    <input type="file" name="file_izin_kerja_umum" onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_izin_kerja_umum && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                             </div>
@@ -566,11 +592,11 @@ export default function Proyek() {
                                                     onChange={e => setIzinKhususCheck({...izinKhususCheck, [izin.key]: e.target.checked})} 
                                                     className="w-4 h-4 text-[#E11D2E] rounded border-gray-300 focus:ring-[#E11D2E]" 
                                                 />
-                                                <span className="font-medium text-sm text-gray-700">{izin.label} (Maks 5MB)</span>
+                                                <span className="font-medium text-sm text-gray-700">{izin.label} (PDF, PNG, JPG, JPEG, Maks 5MB)</span>
                                             </label>
                                             {izinKhususCheck[izin.key] && (
                                                 <div className="mt-3 pl-7">
-                                                    <input type="file" name={izin.key} onChange={handleSafetyFileChange} className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2 bg-white" />
+                                                    <input type="file" name={izin.key} onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2 bg-white" />
                                                     {selectedProyek?.[izin.key] && <span className="text-xs text-green-600 block mt-1">✓ Sudah diunggah</span>}
                                                 </div>
                                             )}

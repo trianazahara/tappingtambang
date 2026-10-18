@@ -1,4 +1,5 @@
 const { MasterInstansi } = require('../models');
+const db = require('../config/db');
 
 const getInstansi = async (req, res) => {
     try {
@@ -13,17 +14,44 @@ const addInstansi = async (req, res) => {
     try {
         const { nama_instansi, kategori_instansi } = req.body;
 
-        if (!nama_instansi || !kategori_instansi) {
-            return res.status(400).json({ success: false, message: "Nama instansi dan kategori wajib diisi" });
+        if (!nama_instansi || !nama_instansi.toString().trim()) {
+            return res.status(400).json({ success: false, message: "Nama instansi wajib diisi" });
+        }
+
+        const cleanNama = nama_instansi.toString().trim();
+        const cleanKategori = (kategori_instansi && kategori_instansi.toString().trim()) 
+            ? kategori_instansi.toString().trim() 
+            : 'Vendor Outsourcing';
+
+        // Cek jika instansi sudah ada di database (case-insensitive)
+        const existing = await MasterInstansi.findOne({
+            where: db.where(
+                db.fn('LOWER', db.col('nama_instansi')),
+                cleanNama.toLowerCase()
+            )
+        });
+
+        if (existing) {
+            // Jika sudah ada tapi nonaktif, aktifkan kembali
+            if (existing.status_instansi === 'Nonaktif') {
+                await existing.update({ status_instansi: 'Aktif' });
+            }
+            return res.status(200).json({ 
+                success: true, 
+                message: "Instansi berhasil ditemukan", 
+                data: existing 
+            });
         }
 
         const newInstansi = await MasterInstansi.create({
-            nama_instansi,
-            kategori_instansi
+            nama_instansi: cleanNama,
+            kategori_instansi: cleanKategori,
+            status_instansi: 'Aktif'
         });
 
         res.status(201).json({ success: true, message: "Instansi berhasil ditambahkan", data: newInstansi });
     } catch (error) {
+        console.error("Error addInstansi:", error);
         res.status(500).json({ success: false, message: "Gagal menambahkan instansi", error: error.message });
     }
 };

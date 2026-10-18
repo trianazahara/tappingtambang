@@ -37,11 +37,18 @@ export default function Register() {
         try {
             let finalIdInstansi = idInstansi;
             if (idInstansi === 'lainnya') {
+                if (!instansiLainnya || !instansiLainnya.trim()) {
+                    toast.error("Silakan ketik nama instansi/perusahaan Anda");
+                    setIsLoading(false);
+                    return;
+                }
+
                 const resInstansi = await axios.post(`${import.meta.env.VITE_API_URL}/api/instansi`, {
-                    nama_instansi: instansiLainnya,
-                    kategori_instansi: 'Visitor'
+                    nama_instansi: instansiLainnya.trim(),
+                    kategori_instansi: 'Vendor Outsourcing'
                 });
-                if (resInstansi.data.success) {
+                
+                if (resInstansi.data && resInstansi.data.success && resInstansi.data.data) {
                     finalIdInstansi = resInstansi.data.data.id_instansi;
                 } else {
                     toast.error("Gagal menambahkan instansi baru");
@@ -51,20 +58,23 @@ export default function Register() {
             }
 
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
-                nama_lengkap: namaLengkap,
-                id_instansi: finalIdInstansi || null,
-                email,
+                nama_lengkap: namaLengkap.trim(),
+                id_instansi: finalIdInstansi ? parseInt(finalIdInstansi) : null,
+                email: email.trim(),
                 password
             });
 
             if (res.data.success) {
-                toast.success('Pendaftaran berhasil! Silakan periksa email Anda untuk verifikasi.');
+                toast.success('Pendaftaran berhasil! ' + (res.data.message || ''));
                 setTimeout(() => {
                     navigate('/login');
-                }, 4000);
+                }, 2500);
             }
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Terjadi kesalahan saat pendaftaran.');
+            console.error("Register error:", err);
+            const msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat pendaftaran.';
+            toast.error(msg);
+        } finally {
             setIsLoading(false);
         }
     };

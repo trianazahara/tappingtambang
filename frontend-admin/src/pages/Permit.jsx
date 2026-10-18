@@ -534,14 +534,25 @@ export default function Permit() {
     const handleFileChange = (e) => {
         const { name, files: fileList } = e.target;
         if (fileList.length > 0) {
-            if (fileList[0].size > 5 * 1024 * 1024) {
+            const file = fileList[0];
+            const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validExtensions.includes(fileExt)) {
+                setError('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                toast.error('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                e.target.value = '';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
                 setError('Ukuran file tidak boleh lebih dari 5MB');
                 toast.error('Ukuran file tidak boleh lebih dari 5MB');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                e.target.value = null;
+                e.target.value = '';
                 return;
             }
-            setFiles(prev => ({ ...prev, [name]: fileList[0] }));
+            setFiles(prev => ({ ...prev, [name]: file }));
         }
     };
 
@@ -1383,7 +1394,7 @@ export default function Permit() {
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-semibold text-gray-800">{fileReq.label} {isStrictlyRequired && <span className="text-red-500">*</span>}</div>
-                                                        <div className="text-xs text-gray-500">{files[fileReq.id] ? files[fileReq.id].name : (formData[fileReq.id] ? 'Tersimpan' : 'PDF/JPG, Maks 5MB')}</div>
+                                                        <div className="text-xs text-gray-500">{files[fileReq.id] ? files[fileReq.id].name : (formData[fileReq.id] ? 'Tersimpan' : 'PDF, PNG, JPG, JPEG (Maks 5MB)')}</div>
                                                     </div>
                                                 </div>
                                                 <label className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition-colors text-sm font-medium ${hasFile ? 'bg-white border border-green-200 text-green-700 hover:bg-green-50' : 'bg-[#E11D2E]/10 text-[#E11D2E] hover:bg-[#E11D2E]/20'}`}>
@@ -1394,7 +1405,7 @@ export default function Permit() {
                                                         name={fileReq.id}
                                                         onChange={handleFileChange}
                                                         className="sr-only"
-                                                        accept=".pdf,.jpg,.jpeg,.png"
+                                                        accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                                                         required={isStrictlyRequired}
                                                     />
                                                 </label>
@@ -1529,7 +1540,7 @@ export default function Permit() {
                                                 {files['file_safety_induksi'] || formData['file_safety_induksi'] ? <CheckCircle2 size={32} className="text-green-500" /> : <Upload size={32} className="text-gray-400" />}
                                                 <div>
                                                     <div className={files['file_safety_induksi'] || formData['file_safety_induksi'] ? 'font-bold text-green-700' : 'font-bold text-gray-700'}>{files['file_safety_induksi'] ? files['file_safety_induksi'].name : (formData['file_safety_induksi'] ? 'Dokumen Tersimpan (Ketuk ubah)' : 'Pilih/Tarik File Safety Induksi')}</div>
-                                                    <div className="text-xs text-gray-500 mt-1">Format PDF/JPG, Maks 5MB</div>
+                                                    <div className="text-xs text-gray-500 mt-1">Format PDF, PNG, JPG, JPEG (Maks 5MB)</div>
                                                 </div>
                                             </div>
                                             <input
@@ -1537,7 +1548,7 @@ export default function Permit() {
                                                 name="file_safety_induksi"
                                                 onChange={handleFileChange}
                                                 className="sr-only"
-                                                accept=".pdf,.jpg,.jpeg,.png"
+                                                accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                                                 required={!formData.is_draft && !files['file_safety_induksi'] && !formData['file_safety_induksi']}
                                             />
                                         </label>

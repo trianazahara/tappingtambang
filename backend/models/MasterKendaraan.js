@@ -26,6 +26,11 @@ const MasterKendaraan = db.define('master_kendaraan', {
     type_unit: {
         type: DataTypes.STRING(100),
         allowNull: true
+    },
+    jumlah_soal: {
+        type: DataTypes.INTEGER,
+        defaultValue: 20,
+        allowNull: true
     }
 }, {
     tableName: 'master_kendaraan',

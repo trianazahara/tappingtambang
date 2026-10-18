@@ -14,6 +14,7 @@ const ProyekArea = require('./ProyekArea');
 const MasterKendaraan = require('./MasterKendaraan');
 const Visitor = require('./Visitor');
 const MasterKartuVisitor = require('./MasterKartuVisitor');
+const PengaturanUjian = require('./PengaturanUjian');
 
 // --- Associations ---
 
@@ -90,5 +91,6 @@ module.exports = {
     MasterKendaraan,
     KartuAkses,
     Visitor,
-    MasterKartuVisitor
+    MasterKartuVisitor,
+    PengaturanUjian
 };
