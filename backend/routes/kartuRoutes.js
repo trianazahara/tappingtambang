@@ -75,24 +75,39 @@ router.post('/proses', async (req, res) => {
         // Berlaku hingga (bisa null jika permanent)
         const berlakuHingga = pengajuan.tanggal_selesai ? pengajuan.tanggal_selesai : null;
 
-        // 3. Buat Data Kartu Akses
-        // Hapus jika sebelumnya sudah ada (regenerate)
-        await KartuAkses.destroy({ where: { id_karyawan: pengajuan.id_karyawan } });
-        
-        const kartu = await KartuAkses.create({
-            id_karyawan: pengajuan.id_karyawan,
-            uid_kartu: uid_kartu || `UID-${Date.now()}`, // Kalau barcode, generate UID dummy
-            nomor_permit: nomor_permit,
-            jenis_teknologi: parsedTeknologi,
-            warna_kartu: parsedWarna,
-            status_kartu: 'Aktif',
-            tanggal_cetak: new Date(),
-            berlaku_hingga: berlakuHingga,
-            nomor_license: nomor_license || null,
-            type_unit: type_unit || null,
-            jenis_permit: jenis_permit || null,
-            issued_at: issued_at || null
-        });
+        // 3. Buat / Update Data Kartu Akses (Upsert agar tidak terkena Foreign Key Constraint di log_tapping)
+        let kartu = await KartuAkses.findOne({ where: { id_karyawan: pengajuan.id_karyawan } });
+        if (kartu) {
+            kartu.nomor_permit = nomor_permit;
+            kartu.jenis_teknologi = parsedTeknologi;
+            kartu.warna_kartu = parsedWarna;
+            kartu.status_kartu = 'Aktif';
+            kartu.tanggal_cetak = new Date();
+            kartu.berlaku_hingga = berlakuHingga;
+            kartu.nomor_license = nomor_license || null;
+            kartu.type_unit = type_unit || null;
+            kartu.jenis_permit = jenis_permit || null;
+            kartu.issued_at = issued_at || null;
+            if (uid_kartu && uid_kartu.trim() !== '') {
+                kartu.uid_kartu = uid_kartu;
+            }
+            await kartu.save();
+        } else {
+            kartu = await KartuAkses.create({
+                id_karyawan: pengajuan.id_karyawan,
+                uid_kartu: uid_kartu || `UID-${Date.now()}`,
+                nomor_permit: nomor_permit,
+                jenis_teknologi: parsedTeknologi,
+                warna_kartu: parsedWarna,
+                status_kartu: 'Aktif',
+                tanggal_cetak: new Date(),
+                berlaku_hingga: berlakuHingga,
+                nomor_license: nomor_license || null,
+                type_unit: type_unit || null,
+                jenis_permit: jenis_permit || null,
+                issued_at: issued_at || null
+            });
+        }
 
         // 4. Update Status Pengajuan
         pengajuan.status_berkas = 'Aktif';
@@ -101,7 +116,11 @@ router.post('/proses', async (req, res) => {
         res.status(200).json({ success: true, message: 'Kartu berhasil diproses dan diaktifkan', data: kartu });
     } catch (error) {
         console.error("Error process kartu:", error);
-        res.status(500).json({ success: false, message: 'Gagal memproses kartu akses', error: error.message });
+        let errorMsg = error.message;
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            errorMsg = 'Nomor Permit atau UID Kartu sudah digunakan oleh kartu lain.';
+        }
+        res.status(500).json({ success: false, message: 'Gagal memproses kartu akses', error: errorMsg });
     }
 });
 

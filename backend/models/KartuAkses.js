@@ -44,7 +44,7 @@ const KartuAkses = db.define('kartu_akses', {
         type: DataTypes.STRING(100)
     },
     type_unit: {
-        type: DataTypes.STRING(100)
+        type: DataTypes.TEXT
     },
     jenis_permit: {
         type: DataTypes.ENUM('Full', 'R')

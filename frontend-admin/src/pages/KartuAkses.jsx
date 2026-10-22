@@ -249,7 +249,11 @@ export default function KartuAkses() {
             }
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.message || 'Gagal memproses kartu');
+            const backendError = err.response?.data?.error;
+            const backendMsg = err.response?.data?.message || 'Gagal memproses kartu';
+            const fullMsg = backendError && backendError !== backendMsg ? `${backendMsg} (${backendError})` : backendMsg;
+            setError(fullMsg);
+            document.getElementById('modalKartuBody')?.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSubmitLoading(false);
         }
@@ -542,7 +546,7 @@ export default function KartuAkses() {
                             </button>
                         </div>
                         
-                        <div className="p-6 overflow-y-auto flex-1">
+                        <div id="modalKartuBody" className="p-6 overflow-y-auto flex-1">
                             {error && (
                                 <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 flex items-center gap-3">
                                     <AlertCircle size={20} /> <p className="font-medium">{error}</p>
