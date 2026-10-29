@@ -210,6 +210,62 @@ export default function Permit() {
         }
     }, [view, edit_id_query, id_proyek_query, detail_id_query]);
 
+    // Sinkronisasi data instansi user dari backend jika belum tersimpan di localStorage
+    useEffect(() => {
+        if (id_user && !user.id_instansi) {
+            axios.get(`${import.meta.env.VITE_API_URL}/api/users/${id_user}`).then(res => {
+                if (res.data?.success && res.data?.data) {
+                    const u = res.data.data;
+                    if (u.id_instansi) {
+                        const updatedUser = { 
+                            ...user, 
+                            id_instansi: u.id_instansi, 
+                            nama_instansi: u.master_instansi?.nama_instansi || user.nama_instansi 
+                        };
+                        localStorage.setItem('user', JSON.stringify(updatedUser));
+                        setFormData(prev => ({
+                            ...prev,
+                            id_instansi: prev.id_instansi || u.id_instansi
+                        }));
+                    }
+                }
+            }).catch(() => {});
+        }
+    }, [id_user]);
+
+    // Otomatis tarik data profil & instansi pekerja saat NIK selesai diinput
+    const handleNikBlur = async () => {
+        const nik = formData.nik_atau_ktm?.trim();
+        if (!nik || editId) return;
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/permit/check-nik/${encodeURIComponent(nik)}`);
+            if (res.data?.success && res.data?.isExisting && res.data?.data) {
+                const k = res.data.data;
+                toast.success(`Data pekerja ditemukan: ${k.nama_lengkap}`);
+                setFormData(prev => ({
+                    ...prev,
+                    nama_lengkap: prev.nama_lengkap || k.nama_lengkap || '',
+                    jenis_kelamin: k.jenis_kelamin || prev.jenis_kelamin,
+                    tempat_lahir: prev.tempat_lahir || k.tempat_lahir || '',
+                    tanggal_lahir: prev.tanggal_lahir || (k.tanggal_lahir ? k.tanggal_lahir.substring(0, 10) : ''),
+                    agama: prev.agama || k.agama || '',
+                    golongan_darah: prev.golongan_darah || k.golongan_darah || '',
+                    alamat_rumah: prev.alamat_rumah || k.alamat_rumah || '',
+                    no_hp: prev.no_hp || k.no_hp || '',
+                    email: prev.email || k.email || '',
+                    jabatan: prev.jabatan || k.jabatan || '',
+                    unit_kerja: prev.unit_kerja || k.unit_kerja || '',
+                    id_instansi: prev.id_instansi || k.id_instansi || user.id_instansi || '',
+                    riwayat_pendidikan: prev.riwayat_pendidikan || k.riwayat_pendidikan || '',
+                    sertifikasi_keahlian: prev.sertifikasi_keahlian || k.sertifikasi_keahlian || '',
+                    pendidikan_khusus: prev.pendidikan_khusus || k.pendidikan_khusus || ''
+                }));
+            }
+        } catch (e) {
+            console.error("Cek NIK error:", e);
+        }
+    };
+
     const fetchDetailProyek = async (id_proyek) => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/proyek/${id_proyek}`);
@@ -267,7 +323,7 @@ export default function Permit() {
         setFormData({
             nik_atau_ktm: '', nama_lengkap: '', jenis_kelamin: 'L', tempat_lahir: '', tanggal_lahir: '',
             agama: '', golongan_darah: '', alamat_rumah: '', no_hp: '', email: '', jabatan: '', unit_kerja: '',
-            id_instansi: '', kategori_pemohon: role === 'Koordinator_Vendor' ? 'Kontraktor' : 'Internal', riwayat_pendidikan: '', sertifikasi_keahlian: '',
+            id_instansi: user.id_instansi || '', kategori_pemohon: role === 'Koordinator_Vendor' ? 'Kontraktor' : 'Internal', riwayat_pendidikan: '', sertifikasi_keahlian: '',
             pendidikan_khusus: '', jenis_izin: 'Baru', jenis_permintaan: 'Permanent', tanggal_mulai: '',
             tanggal_selesai: '', kategori_akses: 'Merah (Pit Worker)', area_ids: [], jenis_kendaraan: [],
             alasan_justifikasi: '', tanggal_berlaku_sim: '', tanggal_berlaku_sio: '', perlu_izin_khusus: false, izin_panas: false, izin_ketinggian: false, izin_perancah: false,
@@ -995,6 +1051,12 @@ export default function Permit() {
                                                     <td className="px-6 py-4 border-b border-gray-100">
                                                         <div className="font-medium text-gray-900">{p.karyawan?.nama_lengkap}</div>
                                                         <div className="text-xs text-gray-500">{p.karyawan?.nik_atau_ktm}</div>
+                                                        {(p.karyawan?.master_instansi?.nama_instansi || p.user?.master_instansi?.nama_instansi) && (
+                                                            <div className="text-[11px] text-blue-600 font-medium mt-0.5 flex items-center gap-1">
+                                                                <span>🏢</span>
+                                                                <span>{p.karyawan?.master_instansi?.nama_instansi || p.user?.master_instansi?.nama_instansi}</span>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4 border-b border-gray-100">
                                                         <div className="text-xs font-medium bg-gray-100 inline-block px-2 py-1 rounded mb-1">{p.kategori_akses}</div>
@@ -1121,7 +1183,17 @@ export default function Permit() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">NIK / KTM <span className="text-red-500">*</span></label>
-                                    <input type="text" name="nik_atau_ktm" value={formData.nik_atau_ktm} onChange={handleInputChange} required className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none" placeholder="Masukkan NIK atau KTM" />
+                                    <input 
+                                        type="text" 
+                                        name="nik_atau_ktm" 
+                                        value={formData.nik_atau_ktm} 
+                                        onChange={handleInputChange} 
+                                        onBlur={handleNikBlur}
+                                        required 
+                                        className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none" 
+                                        placeholder="Masukkan NIK atau KTM" 
+                                    />
+                                    <p className="text-[11px] text-gray-400">Tekan tab / klik luar untuk otomatis cek profil jika pekerja sudah terdaftar.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Lengkap <span className="text-red-500">*</span></label>
@@ -1171,8 +1243,43 @@ export default function Permit() {
                                     <input type="text" name="jabatan" value={formData.jabatan} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none" required placeholder="Jabatan pekerja" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Unit Kerja / Alamat Kantor <span className="text-red-500">*</span></label>
-                                    <input type="text" name="unit_kerja" value={formData.unit_kerja} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none" required placeholder="Departemen / Biro" />
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Unit Kerja / Departemen / Biro <span className="text-red-500">*</span></label>
+                                    <input type="text" name="unit_kerja" value={formData.unit_kerja} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none" required placeholder="Contoh: Tambang, Logistik, HSE..." />
+                                </div>
+
+                                {/* Pilihan Nama Instansi / Perusahaan */}
+                                <div className="space-y-2 md:col-span-2 p-4 bg-red-50/30 border border-red-100 rounded-xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                        <label className="block text-sm font-bold text-gray-800">
+                                            Nama Instansi / Perusahaan / Vendor / Kampus {formData.kategori_pemohon !== 'Internal' && <span className="text-red-500">*</span>}
+                                        </label>
+                                        {user?.id_instansi && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({ ...prev, id_instansi: user.id_instansi }))}
+                                                className="text-xs text-[#E11D2E] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <span>🏢 Gunakan Instansi Akun Saya ({user.nama_instansi || 'Terdaftar'})</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <select 
+                                        name="id_instansi" 
+                                        value={formData.id_instansi || ''} 
+                                        onChange={handleInputChange}
+                                        required={formData.kategori_pemohon !== 'Internal'}
+                                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white focus:border-[#E11D2E] focus:ring-4 focus:ring-[#E11D2E]/10 font-medium text-gray-800 transition-all outline-none"
+                                    >
+                                        <option value="">{formData.kategori_pemohon === 'Internal' ? '-- PT Semen Padang (Default Internal) atau Pilih Instansi --' : '-- Pilih Nama Instansi / Perusahaan --'}</option>
+                                        {masterInstansi.map(inst => (
+                                            <option key={inst.id_instansi} value={inst.id_instansi}>
+                                                {inst.nama_instansi} ({inst.kategori_instansi})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[11px] text-gray-500">
+                                        Nama instansi ini akan otomatis ditarik dan tercetak pada kartu Mine Permit agar nilai perusahaan tidak kosong.
+                                    </p>
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Riwayat Pendidikan <span className="text-red-500">*</span></label>
@@ -1835,8 +1942,15 @@ export default function Permit() {
                                             <p className="font-medium text-gray-800 flex items-center gap-1.5"><Briefcase size={14} className="text-gray-400"/> {p.karyawan?.jabatan || '-'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-gray-500 mb-1">Unit Kerja / Perusahaan</p>
-                                            <p className="font-medium text-gray-800">{p.karyawan?.unit_kerja || p.karyawan?.perusahaan || '-'}</p>
+                                            <p className="text-xs text-gray-500 mb-1">Nama Instansi / Perusahaan</p>
+                                            <p className="font-semibold text-gray-900 flex items-center gap-1.5">
+                                                <span className="text-blue-600">🏢</span>
+                                                {p.karyawan?.master_instansi?.nama_instansi || p.user?.master_instansi?.nama_instansi || (p.kategori_pemohon === 'Internal' ? 'PT Semen Padang' : '-')}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Unit Kerja / Departemen</p>
+                                            <p className="font-medium text-gray-800">{p.karyawan?.unit_kerja || '-'}</p>
                                         </div>
                                         <div className="md:col-span-2">
                                             <p className="text-xs text-gray-500 mb-1">Alamat Rumah</p>

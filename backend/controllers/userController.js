@@ -1,14 +1,33 @@
-const { User } = require('../models');
+const { User, MasterInstansi } = require('../models');
+const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
 const getUsers = async (req, res) => {
     try {
         const data = await User.findAll({
-            attributes: { exclude: ['password'] } // Don't send passwords
+            attributes: { exclude: ['password'] },
+            include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi', 'kategori_instansi'] }],
+            order: [['id_user', 'DESC']]
         });
         res.status(200).json({ success: true, data });
     } catch (error) {
+        console.error("Error getUsers:", error);
         res.status(500).json({ success: false, message: "Gagal memuat user" });
+    }
+};
+
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id, {
+            attributes: { exclude: ['password'] },
+            include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi', 'kategori_instansi'] }]
+        });
+        if (!user) return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+        res.status(200).json({ success: true, data: user });
+    } catch (error) {
+        console.error("Error getUserById:", error);
+        res.status(500).json({ success: false, message: "Gagal memuat detail user" });
     }
 };
 
@@ -20,16 +39,17 @@ const addUser = async (req, res) => {
             return res.status(400).json({ success: false, message: "Semua field (email, password, nama_lengkap, role) wajib diisi" });
         }
 
-        const existingUser = await User.findOne({ where: { email } });
+        const cleanEmail = email.trim().toLowerCase();
+        const existingUser = await User.findOne({ where: { email: cleanEmail } });
         if (existingUser) {
-            return res.status(400).json({ success: false, message: "Email sudah digunakan" });
+            return res.status(400).json({ success: false, message: `Email "${cleanEmail}" sudah digunakan oleh akun lain (${existingUser.nama_lengkap})` });
         }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = await User.create({
-            email,
+            email: cleanEmail,
             password: hashedPassword,
             nama_lengkap,
             role,
@@ -40,9 +60,7 @@ const addUser = async (req, res) => {
             is_verified: true
         });
 
-        // Don't return password in response
         const { password: _, ...userData } = newUser.toJSON();
-
         res.status(201).json({ success: true, message: "User berhasil ditambahkan", data: userData });
     } catch (error) {
         console.error("Error adding user:", error);
@@ -59,16 +77,27 @@ const editUser = async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: "User tidak ditemukan" });
 
         // Cek jika email mau diubah
-        if (email && email !== user.email) {
-            const existingEmail = await User.findOne({ where: { email } });
-            if (existingEmail) {
-                return res.status(400).json({ success: false, message: "Email sudah digunakan oleh akun lain" });
+        if (email) {
+            const cleanEmail = email.trim().toLowerCase();
+            if (cleanEmail !== user.email?.toLowerCase()) {
+                const existingEmail = await User.findOne({ 
+                    where: { 
+                        email: cleanEmail,
+                        id_user: { [Op.ne]: id }
+                    } 
+                });
+                if (existingEmail) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Email "${cleanEmail}" sudah digunakan oleh akun lain (${existingEmail.nama_lengkap})` 
+                    });
+                }
+                user.email = cleanEmail;
             }
-            user.email = email;
         }
 
-        user.nama_lengkap = nama_lengkap || user.nama_lengkap;
-        user.role = role || user.role;
+        if (nama_lengkap) user.nama_lengkap = nama_lengkap;
+        if (role) user.role = role;
         if (status_akun) user.status_akun = status_akun;
         if (jenis_vendor !== undefined) user.jenis_vendor = jenis_vendor;
         if (masa_berlaku_kontrak !== undefined) user.masa_berlaku_kontrak = masa_berlaku_kontrak;
@@ -84,6 +113,7 @@ const editUser = async (req, res) => {
         const { password: _, ...userData } = user.toJSON();
         res.status(200).json({ success: true, message: "User berhasil diupdate", data: userData });
     } catch (error) {
+        console.error("Error updating user:", error);
         res.status(500).json({ success: false, message: "Gagal mengupdate user", error: error.message });
     }
 };
@@ -104,4 +134,4 @@ const toggleStatusUser = async (req, res) => {
     }
 };
 
-module.exports = { getUsers, addUser, editUser, toggleStatusUser };
+module.exports = { getUsers, getUserById, addUser, editUser, toggleStatusUser };

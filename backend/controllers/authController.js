@@ -1,5 +1,5 @@
 // Import model User dari folder models (yang sudah disatukan di index.js)
-const { User } = require('../models'); 
+const { User, MasterInstansi } = require('../models'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -14,8 +14,12 @@ const login = async (req, res) => {
         return res.status(400).json({ success: false, message: "Email tidak boleh kosong" });
     }
     try {
-        // Menggunakan fungsi findOne bawaan Sequelize
-        const user = await User.findOne({ where: { email: email } });
+        // Menggunakan fungsi findOne bawaan Sequelize dengan relasi MasterInstansi
+        const cleanEmail = email.trim();
+        const user = await User.findOne({ 
+            where: { email: cleanEmail },
+            include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi', 'kategori_instansi'] }]
+        });
         
         // Jika user tidak ditemukan (hasilnya null)
         if (!user) {
@@ -48,7 +52,10 @@ const login = async (req, res) => {
             data: {
                 id_user: user.id_user,
                 nama_lengkap: user.nama_lengkap,
+                email: user.email,
                 role: user.role,
+                id_instansi: user.id_instansi,
+                nama_instansi: user.master_instansi ? user.master_instansi.nama_instansi : null,
                 jenis_vendor: user.jenis_vendor,
                 masa_berlaku_kontrak: user.masa_berlaku_kontrak
             }

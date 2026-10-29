@@ -23,6 +23,10 @@ MasterKendaraan.hasMany(MasterSoal, { foreignKey: 'id_kendaraan' });
 MasterSoal.belongsTo(MasterKendaraan, { foreignKey: 'id_kendaraan' });
 
 
+// User & MasterInstansi (1:N)
+MasterInstansi.hasMany(User, { foreignKey: 'id_instansi' });
+User.belongsTo(MasterInstansi, { foreignKey: 'id_instansi' });
+
 // Karyawan & MasterInstansi (1:N)
 MasterInstansi.hasMany(Karyawan, { foreignKey: 'id_instansi' });
 Karyawan.belongsTo(MasterInstansi, { foreignKey: 'id_instansi' });

@@ -1,4 +1,4 @@
-const { Karyawan, PengajuanPermit, SuratSehat, IzinArea, MasterArea } = require('../models');
+const { Karyawan, PengajuanPermit, SuratSehat, IzinArea, MasterArea, MasterInstansi, User } = require('../models');
 
 // Handler untuk POST /api/pengajuan
 const submitPengajuan = async (req, res) => {
@@ -27,10 +27,27 @@ const submitPengajuan = async (req, res) => {
         // 1. Cari atau buat Profil Karyawan
         let karyawan = null;
         if (nik_atau_ktm && nik_atau_ktm.trim() !== '') {
-            karyawan = await Karyawan.findOne({ where: { nik_atau_ktm } });
+            karyawan = await Karyawan.findOne({ where: { nik_atau_ktm: nik_atau_ktm.trim() } });
         }
-        const _idInstansi = parseInt(id_instansi);
-        const parsedIdInstansi = !isNaN(_idInstansi) ? _idInstansi : null;
+        
+        let parsedIdInstansi = null;
+        if (id_instansi && id_instansi !== 'null' && id_instansi !== 'undefined') {
+            const parsed = parseInt(id_instansi);
+            if (!isNaN(parsed)) parsedIdInstansi = parsed;
+        }
+
+        const _idUser = parseInt(id_user_pengaju);
+        const parsedIdUser = !isNaN(_idUser) ? _idUser : null;
+
+        // Fallback id_instansi jika belum dipilih, ambil dari akun pengaju
+        if (!parsedIdInstansi && parsedIdUser) {
+            try {
+                const userPengaju = await User.findByPk(parsedIdUser);
+                if (userPengaju && userPengaju.id_instansi) {
+                    parsedIdInstansi = userPengaju.id_instansi;
+                }
+            } catch (err) {}
+        }
         
         const _idProyek = parseInt(id_proyek);
         const parsedIdProyek = !isNaN(_idProyek) ? _idProyek : null;
@@ -47,9 +64,22 @@ const submitPengajuan = async (req, res) => {
             }
         }
 
-        if (!karyawan) {
+        if (karyawan) {
+            const updateData = {};
+            if (parsedIdInstansi) updateData.id_instansi = parsedIdInstansi;
+            if (nama_lengkap) updateData.nama_lengkap = nama_lengkap;
+            if (jabatan) updateData.jabatan = jabatan;
+            if (unit_kerja) updateData.unit_kerja = unit_kerja;
+            if (no_hp) updateData.no_hp = no_hp;
+            if (email) updateData.email = email;
+            if (alamat_rumah) updateData.alamat_rumah = alamat_rumah;
+            if (Object.keys(updateData).length > 0) {
+                await karyawan.update(updateData);
+            }
+        } else {
             karyawan = await Karyawan.create({
-                nik_atau_ktm, nama_lengkap, jenis_kelamin, tempat_lahir, 
+                nik_atau_ktm: nik_atau_ktm ? nik_atau_ktm.trim() : '', 
+                nama_lengkap, jenis_kelamin, tempat_lahir, 
                 tanggal_lahir: (tanggal_lahir && tanggal_lahir !== 'null' && tanggal_lahir !== '') ? tanggal_lahir : null,
                 agama, golongan_darah, alamat_rumah, no_hp, email, jabatan, unit_kerja,
                 riwayat_pendidikan, sertifikasi_keahlian, pendidikan_khusus,
@@ -236,10 +266,19 @@ const getListPengajuan = async (req, res) => {
         const pengajuan = await PengajuanPermit.findAll({
             where: whereClause,
             include: [
-                { model: Karyawan, attributes: ['nik_atau_ktm', 'nama_lengkap', 'jabatan', 'unit_kerja'] },
+                { 
+                    model: Karyawan, 
+                    attributes: ['id_karyawan', 'nik_atau_ktm', 'nama_lengkap', 'jabatan', 'unit_kerja', 'id_instansi'],
+                    include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi', 'kategori_instansi'] }]
+                },
                 { model: MasterArea, attributes: ['id_area', 'nama_area'], through: { attributes: [] } },
                 { model: require('../models/ProyekVendor') },
-                { model: require('../models').RiwayatApproval }
+                { model: require('../models').RiwayatApproval },
+                {
+                    model: User,
+                    attributes: ['id_user', 'nama_lengkap', 'email', 'id_instansi'],
+                    include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi'] }]
+                }
             ],
             order: [['tanggal_pengajuan', 'DESC']]
         });
@@ -258,11 +297,19 @@ const getDetailPengajuan = async (req, res) => {
         const { RiwayatApproval } = require('../models');
         const pengajuan = await PengajuanPermit.findByPk(id, {
             include: [
-                { model: Karyawan },
+                { 
+                    model: Karyawan,
+                    include: [{ model: MasterInstansi }]
+                },
                 { model: SuratSehat },
                 { model: MasterArea, through: { attributes: [] } },
                 { model: RiwayatApproval },
-                { model: require('../models/ProyekVendor') }
+                { model: require('../models/ProyekVendor') },
+                {
+                    model: User,
+                    attributes: ['id_user', 'nama_lengkap', 'email', 'id_instansi'],
+                    include: [{ model: MasterInstansi }]
+                }
             ]
         });
 
@@ -483,8 +530,11 @@ const updatePengajuan = async (req, res) => {
             is_draft
         } = req.body;
 
-        const _idInstansi = parseInt(id_instansi);
-        const parsedIdInstansi = !isNaN(_idInstansi) ? _idInstansi : null;
+        let parsedIdInstansi = null;
+        if (id_instansi && id_instansi !== 'null' && id_instansi !== 'undefined') {
+            const parsed = parseInt(id_instansi);
+            if (!isNaN(parsed)) parsedIdInstansi = parsed;
+        }
 
         const _idProyek = parseInt(id_proyek);
         const parsedIdProyek = !isNaN(_idProyek) ? _idProyek : null;
@@ -493,11 +543,22 @@ const updatePengajuan = async (req, res) => {
         let karyawan = await Karyawan.findByPk(pengajuan.id_karyawan);
         if (karyawan) {
             await karyawan.update({
-                nik_atau_ktm, nama_lengkap, jenis_kelamin, tempat_lahir, 
-                tanggal_lahir: (tanggal_lahir && tanggal_lahir !== 'null' && tanggal_lahir !== '') ? tanggal_lahir : null,
-                agama, golongan_darah, alamat_rumah, no_hp, email, jabatan, unit_kerja,
-                riwayat_pendidikan, sertifikasi_keahlian, pendidikan_khusus,
-                id_instansi: (id_instansi && id_instansi !== 'null' && id_instansi !== 'undefined') ? parseInt(id_instansi) : null
+                nik_atau_ktm: nik_atau_ktm || karyawan.nik_atau_ktm,
+                nama_lengkap: nama_lengkap || karyawan.nama_lengkap,
+                jenis_kelamin: jenis_kelamin || karyawan.jenis_kelamin,
+                tempat_lahir: tempat_lahir || karyawan.tempat_lahir, 
+                tanggal_lahir: (tanggal_lahir && tanggal_lahir !== 'null' && tanggal_lahir !== '') ? tanggal_lahir : karyawan.tanggal_lahir,
+                agama: agama || karyawan.agama,
+                golongan_darah: golongan_darah || karyawan.golongan_darah,
+                alamat_rumah: alamat_rumah || karyawan.alamat_rumah,
+                no_hp: no_hp || karyawan.no_hp,
+                email: email || karyawan.email,
+                jabatan: jabatan || karyawan.jabatan,
+                unit_kerja: unit_kerja || karyawan.unit_kerja,
+                riwayat_pendidikan: riwayat_pendidikan || karyawan.riwayat_pendidikan,
+                sertifikasi_keahlian: sertifikasi_keahlian || karyawan.sertifikasi_keahlian,
+                pendidikan_khusus: pendidikan_khusus || karyawan.pendidikan_khusus,
+                id_instansi: parsedIdInstansi !== null ? parsedIdInstansi : karyawan.id_instansi
             });
         }
 
@@ -654,11 +715,18 @@ const cetakPermit = async (req, res) => {
         const Docxtemplater = require('docxtemplater');
         const ImageModule = require('docxtemplater-image-module-free');
         const QRCode = require('qrcode');
-        const { Karyawan, MasterArea, KartuAkses } = require('../models');
+        const { Karyawan, MasterArea, KartuAkses, MasterInstansi, User } = require('../models');
 
         const pengajuan = await PengajuanPermit.findByPk(id, {
             include: [
-                { model: Karyawan },
+                { 
+                    model: Karyawan,
+                    include: [{ model: MasterInstansi }]
+                },
+                {
+                    model: User,
+                    include: [{ model: MasterInstansi }]
+                },
                 { model: MasterArea, through: { attributes: [] } } // Ambil area yg diizinkan
             ]
         });
@@ -856,17 +924,45 @@ const cetakPermit = async (req, res) => {
         const tahunCetak = dateCetakObj.getFullYear().toString();
 
         // Siapkan data untuk dirender ke dalam template word
-        let perusahaan = pengajuan.karyawan.perusahaan || '-';
+        let perusahaan = '-';
+        if (pengajuan.karyawan?.master_instansi?.nama_instansi) {
+            perusahaan = pengajuan.karyawan.master_instansi.nama_instansi;
+        } else if (pengajuan.user?.master_instansi?.nama_instansi) {
+            perusahaan = pengajuan.user.master_instansi.nama_instansi;
+        } else if (pengajuan.karyawan?.id_instansi) {
+            try {
+                const inst = await MasterInstansi.findByPk(pengajuan.karyawan.id_instansi);
+                if (inst) perusahaan = inst.nama_instansi;
+            } catch (e) {}
+        } else if (pengajuan.id_proyek) {
+            try {
+                const { ProyekVendor } = require('../models');
+                const proyek = await ProyekVendor.findByPk(pengajuan.id_proyek, {
+                    include: [{ model: User, include: [{ model: MasterInstansi }] }]
+                });
+                if (proyek?.user?.master_instansi?.nama_instansi) {
+                    perusahaan = proyek.user.master_instansi.nama_instansi;
+                }
+            } catch (err) {}
+        }
+        
+        if ((!perusahaan || perusahaan === '-') && pengajuan.karyawan?.unit_kerja) {
+            perusahaan = pengajuan.karyawan.unit_kerja;
+        }
+
         if (pengajuan.kategori_pemohon === 'Internal') {
             perusahaan = 'PT Semen Padang';
         }
 
         doc.render({
-            nama_lengkap: pengajuan.karyawan.nama_lengkap || '-',
-            nik: pengajuan.karyawan.nik_atau_ktm || '-',
-            departemen: pengajuan.karyawan.departemen || '-',
+            nama_lengkap: pengajuan.karyawan?.nama_lengkap || '-',
+            nik: pengajuan.karyawan?.nik_atau_ktm || '-',
+            departemen: pengajuan.karyawan?.unit_kerja || '-',
+            unit_kerja: pengajuan.karyawan?.unit_kerja || '-',
             perusahaan: perusahaan,
-            jabatan: pengajuan.karyawan.jabatan || '-',
+            nama_instansi: perusahaan,
+            instansi: perusahaan,
+            jabatan: pengajuan.karyawan?.jabatan || '-',
             kategori_akses: pengajuan.kategori_akses || '-',
             tanggal_mulai: formatDate(pengajuan.tanggal_mulai),
             tanggal_selesai: formatDate(pengajuan.tanggal_selesai),

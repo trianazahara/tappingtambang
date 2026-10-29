@@ -1,10 +1,14 @@
-const { PengajuanPermit, Karyawan, MasterArea, db } = require('../models');
+const { PengajuanPermit, Karyawan, MasterArea, MasterInstansi, db } = require('../models');
 
 const getPengajuan = async (req, res) => {
     try {
         const data = await PengajuanPermit.findAll({
             include: [
-                { model: Karyawan, attributes: ['nik_atau_ktm', 'nama_lengkap'] },
+                { 
+                    model: Karyawan, 
+                    attributes: ['nik_atau_ktm', 'nama_lengkap'],
+                    include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi'] }]
+                },
                 { model: MasterArea, attributes: ['id_area', 'nama_area'], through: { attributes: [] } }
             ],
             order: [['id_pengajuan', 'DESC']]
@@ -51,7 +55,10 @@ const createPengajuan = async (req, res) => {
 
 const cekNik = async (req, res) => {
     try {
-        const karyawan = await Karyawan.findOne({ where: { nik_atau_ktm: req.params.nik } });
+        const karyawan = await Karyawan.findOne({ 
+            where: { nik_atau_ktm: req.params.nik },
+            include: [{ model: MasterInstansi, attributes: ['id_instansi', 'nama_instansi', 'kategori_instansi'] }]
+        });
         if (karyawan) {
             res.status(200).json({ success: true, isExisting: true, data: karyawan });
         } else {

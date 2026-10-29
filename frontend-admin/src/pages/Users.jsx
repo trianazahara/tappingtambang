@@ -100,6 +100,23 @@ export default function Users() {
         e.preventDefault();
         setError('');
         setSuccess('');
+
+        const cleanEmail = email.trim().toLowerCase();
+        if (!cleanEmail) {
+            setError('Email wajib diisi');
+            return;
+        }
+
+        // Cek duplikasi email di sisi client
+        const duplicate = users.find(u => 
+            u.email.toLowerCase() === cleanEmail && 
+            u.id_user !== editId
+        );
+        if (duplicate) {
+            setError(`Email "${cleanEmail}" sudah digunakan oleh akun lain (${duplicate.nama_lengkap}).`);
+            return;
+        }
+
         setSubmitLoading(true);
 
         try {
@@ -131,7 +148,13 @@ export default function Users() {
             }
 
             if (editId) {
-                const payload = { nama_lengkap: namaLengkap, role, status_akun: statusAkun, ...extraPayload };
+                const payload = { 
+                    nama_lengkap: namaLengkap, 
+                    email: cleanEmail,
+                    role, 
+                    status_akun: statusAkun, 
+                    ...extraPayload 
+                };
                 if (password) payload.password = password;
 
                 const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/${editId}`, payload);
@@ -139,7 +162,7 @@ export default function Users() {
             } else {
                 const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users`, { 
                     nama_lengkap: namaLengkap,
-                    email,
+                    email: cleanEmail,
                     password,
                     role,
                     status_akun: statusAkun,
@@ -277,7 +300,14 @@ export default function Users() {
                                     ) : (
                                         filteredUsers.map((user) => (
                                             <tr key={user.id_user} className={`hover:bg-gray-50/50 transition-colors ${user.status_akun === 'Nonaktif' ? 'opacity-60' : ''}`}>
-                                                <td className="px-6 py-4 font-medium text-gray-900">{user.nama_lengkap}</td>
+                                                <td className="px-6 py-4 font-medium text-gray-900">
+                                                    <div>{user.nama_lengkap}</div>
+                                                    {user.master_instansi?.nama_instansi && (
+                                                        <span className="text-[11px] text-gray-500 font-normal flex items-center gap-1 mt-0.5">
+                                                            🏢 {user.master_instansi.nama_instansi}
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-4">{user.email}</td>
                                                 <td className="px-6 py-4">
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-medium text-xs">
@@ -355,16 +385,19 @@ export default function Users() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-gray-700">Email</label>
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                                    {editId && <span className="text-[11px] text-gray-400">Dapat diedit</span>}
+                                </div>
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    disabled={!!editId} // Disable editing email
                                     placeholder="budi@contoh.com"
-                                    className={`w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#E11D2E] focus:ring focus:ring-[#E11D2E]/20 transition-all outline-none ${editId ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#E11D2E] focus:ring focus:ring-[#E11D2E]/20 transition-all outline-none"
                                     required
                                 />
+                                {editId && <p className="text-[11px] text-gray-400">Sistem otomatis memvalidasi duplikasi email agar tidak bentrok dengan akun lain.</p>}
                             </div>
                         </div>
 
