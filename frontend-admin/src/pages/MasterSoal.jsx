@@ -3,7 +3,8 @@ import axios from 'axios';
 import { 
     Plus, Edit2, Trash2, Search, Loader2, Upload, Download, 
     FileSpreadsheet, AlertCircle, CheckCircle2, X, HelpCircle, 
-    Info, FileText, ChevronDown, ChevronUp, SlidersHorizontal, Clock
+    Info, FileText, ChevronDown, ChevronUp, SlidersHorizontal, Clock,
+    Filter, RotateCcw, Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -11,6 +12,8 @@ export default function MasterSoal() {
     const [soal, setSoal] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [selectedKendaraan, setSelectedKendaraan] = useState('all');
+    const [selectedStatus, setSelectedStatus] = useState('all');
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         pertanyaan: '',
@@ -170,7 +173,7 @@ export default function MasterSoal() {
             pilihan_d: '',
             kunci_jawaban: 'A',
             status_soal: 'Aktif',
-            id_kendaraan: ''
+            id_kendaraan: (selectedKendaraan !== 'all' && selectedKendaraan !== 'umum') ? selectedKendaraan : ''
         });
         setFileGambar(null);
         setShowModal(true);
@@ -305,7 +308,48 @@ export default function MasterSoal() {
         }
     };
 
-    const filteredSoal = soal.filter(s => s.pertanyaan?.toLowerCase().includes(search.toLowerCase()));
+    // Hitung jumlah soal per kendaraan
+    const countAll = soal.length;
+    const countUmum = soal.filter(s => !s.id_kendaraan).length;
+
+    const vehicleCountMap = new Map();
+    soal.forEach(s => {
+        if (s.id_kendaraan) {
+            vehicleCountMap.set(s.id_kendaraan, (vehicleCountMap.get(s.id_kendaraan) || 0) + 1);
+        }
+    });
+
+    const selectedKendaraanName = selectedKendaraan === 'all' 
+        ? 'Semua Kendaraan' 
+        : selectedKendaraan === 'umum' 
+            ? 'Umum (Semua Unit)' 
+            : masterKendaraan.find(k => String(k.id_kendaraan) === String(selectedKendaraan))?.nama_kendaraan || 'Unit Khusus';
+
+    const filteredSoal = soal.filter(s => {
+        // 1. Text search
+        const matchesSearch = !search || 
+            s.pertanyaan?.toLowerCase().includes(search.toLowerCase()) ||
+            s.pilihan_a?.toLowerCase().includes(search.toLowerCase()) ||
+            s.pilihan_b?.toLowerCase().includes(search.toLowerCase()) ||
+            s.pilihan_c?.toLowerCase().includes(search.toLowerCase()) ||
+            s.pilihan_d?.toLowerCase().includes(search.toLowerCase());
+
+        // 2. Filter Kendaraan
+        let matchesKendaraan = true;
+        if (selectedKendaraan === 'umum') {
+            matchesKendaraan = !s.id_kendaraan;
+        } else if (selectedKendaraan !== 'all') {
+            matchesKendaraan = String(s.id_kendaraan) === String(selectedKendaraan);
+        }
+
+        // 3. Filter Status Soal
+        let matchesStatus = true;
+        if (selectedStatus !== 'all') {
+            matchesStatus = s.status_soal === selectedStatus;
+        }
+
+        return matchesSearch && matchesKendaraan && matchesStatus;
+    });
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -376,21 +420,188 @@ export default function MasterSoal() {
 
             {/* Content Table Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                    <div className="relative max-w-md w-full">
-                        <input
-                            type="text"
-                            placeholder="Cari teks soal / pertanyaan..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E11D2E] focus:border-[#E11D2E] outline-none transition-all text-sm"
-                        />
-                        <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                {/* Filter & Search Bar */}
+                <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50/50">
+                    <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                        {/* 1. Search Box */}
+                        <div className="relative flex-1 min-w-[240px]">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
+                            <input
+                                type="text"
+                                placeholder="Cari teks pertanyaan / opsi jawaban..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E11D2E] focus:border-[#E11D2E] outline-none transition-all text-sm bg-white"
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                                    title="Hapus pencarian"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* 2. Dropdown Filter Kendaraan & Status */}
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+                            <div className="relative flex-1 sm:flex-none sm:w-64">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                    <Truck size={16} className="text-[#E11D2E]" />
+                                </div>
+                                <select
+                                    value={selectedKendaraan}
+                                    onChange={(e) => setSelectedKendaraan(e.target.value)}
+                                    className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E11D2E] focus:border-[#E11D2E] outline-none text-sm font-semibold bg-white text-gray-800 transition-all cursor-pointer shadow-2xs"
+                                >
+                                    <option value="all">Semua Kendaraan ({countAll} Soal)</option>
+                                    <option value="umum">🌐 Umum / Semua Unit ({countUmum} Soal)</option>
+                                    <optgroup label="── Unit Khusus / Alat Berat ──">
+                                        {masterKendaraan.map(k => {
+                                            const count = vehicleCountMap.get(k.id_kendaraan) || 0;
+                                            return (
+                                                <option key={k.id_kendaraan} value={k.id_kendaraan}>
+                                                    🚛 {k.nama_kendaraan} {k.type_unit ? `(${k.type_unit})` : ''} ({count} Soal)
+                                                </option>
+                                            );
+                                        })}
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div className="relative w-36">
+                                <select
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E11D2E] focus:border-[#E11D2E] outline-none text-sm font-medium bg-white text-gray-700 transition-all cursor-pointer shadow-2xs"
+                                >
+                                    <option value="all">Semua Status</option>
+                                    <option value="Aktif">Aktif</option>
+                                    <option value="Nonaktif">Nonaktif</option>
+                                </select>
+                            </div>
+
+                            {(selectedKendaraan !== 'all' || selectedStatus !== 'all' || search !== '') && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedKendaraan('all');
+                                        setSelectedStatus('all');
+                                        setSearch('');
+                                    }}
+                                    className="px-3 py-2.5 text-xs font-semibold text-gray-600 hover:text-[#E11D2E] hover:bg-red-50 rounded-xl border border-gray-200 hover:border-red-200 transition-all flex items-center gap-1.5 shrink-0"
+                                    title="Reset semua filter"
+                                >
+                                    <RotateCcw size={14} />
+                                    <span>Reset</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium self-end sm:self-center">
-                        Total Soal di Bank: <span className="text-gray-900 font-bold">{filteredSoal.length}</span> (Akan diacak <span className="text-[#E11D2E] font-bold">{examSettings.jumlah_soal} soal</span> per ujian)
+
+                    {/* Quick Horizontal Pills Filter */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-xs">
+                        <span className="text-gray-400 font-semibold text-[11px] shrink-0 mr-1 flex items-center gap-1">
+                            <Filter size={12} />
+                            Unit:
+                        </span>
+                        
+                        <button
+                            type="button"
+                            onClick={() => setSelectedKendaraan('all')}
+                            className={`px-3 py-1 rounded-lg font-semibold shrink-0 transition-all ${
+                                selectedKendaraan === 'all'
+                                    ? 'bg-gray-900 text-white shadow-xs'
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            Semua ({countAll})
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setSelectedKendaraan('umum')}
+                            className={`px-3 py-1 rounded-lg font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
+                                selectedKendaraan === 'umum'
+                                    ? 'bg-[#E11D2E] text-white shadow-xs'
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <span>🌐 Umum</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${selectedKendaraan === 'umum' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                {countUmum}
+                            </span>
+                        </button>
+
+                        {masterKendaraan.map(k => {
+                            const count = vehicleCountMap.get(k.id_kendaraan) || 0;
+                            const isSelected = String(selectedKendaraan) === String(k.id_kendaraan);
+                            return (
+                                <button
+                                    key={k.id_kendaraan}
+                                    type="button"
+                                    onClick={() => setSelectedKendaraan(String(k.id_kendaraan))}
+                                    className={`px-2.5 py-1 rounded-lg font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
+                                        isSelected
+                                            ? 'bg-amber-600 text-white shadow-xs'
+                                            : count > 0 
+                                                ? 'bg-white border border-gray-200 text-gray-700 hover:border-amber-300 hover:bg-amber-50/50'
+                                                : 'bg-white/70 border border-gray-100 text-gray-400 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <span>🚛 {k.nama_kendaraan}</span>
+                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                                        isSelected 
+                                            ? 'bg-white/25 text-white' 
+                                            : count > 0 
+                                                ? 'bg-amber-100 text-amber-800' 
+                                                : 'bg-gray-100 text-gray-400'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
+
+                {/* Active Filter Banner */}
+                {(selectedKendaraan !== 'all' || selectedStatus !== 'all' || search !== '') && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-red-50/70 border-b border-red-100 text-xs">
+                        <div className="flex items-center gap-2 text-red-900 font-medium">
+                            <span className="font-bold text-[#E11D2E] flex items-center gap-1">
+                                <CheckCircle2 size={13} />
+                                Filter Aktif:
+                            </span>
+                            <span>
+                                Menampilkan <strong>{filteredSoal.length}</strong> soal
+                                {selectedKendaraan !== 'all' && (
+                                    <span> untuk unit: <strong className="text-[#E11D2E] bg-white px-2 py-0.5 rounded border border-red-200 ml-1">{selectedKendaraanName}</strong></span>
+                                )}
+                                {selectedStatus !== 'all' && (
+                                    <span className="ml-1.5">• Status: <strong>{selectedStatus}</strong></span>
+                                )}
+                                {search && (
+                                    <span className="ml-1.5">• Pencarian: "<strong>{search}</strong>"</span>
+                                )}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedKendaraan('all');
+                                setSelectedStatus('all');
+                                setSearch('');
+                            }}
+                            className="text-[#E11D2E] hover:underline font-bold flex items-center gap-1 text-[11px]"
+                        >
+                            <RotateCcw size={11} />
+                            Hapus Filter
+                        </button>
+                    </div>
+                )}
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -416,10 +627,30 @@ export default function MasterSoal() {
                                 <tr>
                                     <td colSpan="6" className="text-center py-16 text-gray-500">
                                         <FileSpreadsheet className="mx-auto mb-3 text-gray-300" size={48} />
-                                        <p className="font-semibold text-gray-700">Belum ada soal ditemukan</p>
-                                        <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-                                            Gunakan tombol <strong>Import Excel / CSV</strong> di kanan atas untuk memasukkan ratusan soal sekaligus dari Google Form.
+                                        <p className="font-semibold text-gray-700">
+                                            {selectedKendaraan !== 'all' 
+                                                ? `Belum ada soal untuk unit "${selectedKendaraanName}"`
+                                                : 'Belum ada soal ditemukan'}
                                         </p>
+                                        <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                                            {selectedKendaraan !== 'all' 
+                                                ? 'Anda dapat menambahkan soal baru dan memilih unit kendaraan ini pada formulir, atau mengimpor soal dari Excel.'
+                                                : 'Gunakan tombol Import Excel / CSV di kanan atas untuk memasukkan ratusan soal sekaligus.'}
+                                        </p>
+                                        {(selectedKendaraan !== 'all' || selectedStatus !== 'all' || search !== '') && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedKendaraan('all');
+                                                    setSelectedStatus('all');
+                                                    setSearch('');
+                                                }}
+                                                className="mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                                            >
+                                                <RotateCcw size={13} />
+                                                Tampilkan Semua Soal
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ) : (
@@ -464,13 +695,25 @@ export default function MasterSoal() {
                                         </td>
                                         <td className="p-4 text-gray-700 font-medium">
                                             {item.master_kendaraan?.nama_kendaraan ? (
-                                                <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                                                    🚛 {item.master_kendaraan.nama_kendaraan}
-                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedKendaraan(String(item.id_kendaraan))}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all cursor-pointer group"
+                                                    title={`Klik untuk filter soal unit ${item.master_kendaraan.nama_kendaraan}`}
+                                                >
+                                                    <span>🚛 {item.master_kendaraan.nama_kendaraan}</span>
+                                                    <Filter size={11} className="opacity-0 group-hover:opacity-100 text-amber-600 transition-opacity" />
+                                                </button>
                                             ) : (
-                                                <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
-                                                    🌐 Umum (Semua)
-                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedKendaraan('umum')}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all cursor-pointer group"
+                                                    title="Klik untuk filter soal Umum"
+                                                >
+                                                    <span>🌐 Umum (Semua)</span>
+                                                    <Filter size={11} className="opacity-0 group-hover:opacity-100 text-gray-500 transition-opacity" />
+                                                </button>
                                             )}
                                         </td>
                                         <td className="p-4 text-center">
@@ -553,10 +796,15 @@ export default function MasterSoal() {
                                                     <div className="flex items-center gap-2.5">
                                                         <span className="text-base">🚛</span>
                                                         <div>
-                                                            <span className="font-bold text-sm text-gray-800">{k.nama_kendaraan}</span>
-                                                            <span className="text-[11px] ml-2 px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">
-                                                                {k.kategori_kendaraan}
-                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-sm text-gray-800">{k.nama_kendaraan}</span>
+                                                                <span className="text-[11px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">
+                                                                    {k.kategori_kendaraan}
+                                                                </span>
+                                                            </div>
+                                                            {k.type_unit && (
+                                                                <span className="text-[11px] text-gray-400 block mt-0.5">Tipe: {k.type_unit}</span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1021,7 +1269,9 @@ export default function MasterSoal() {
                                         >
                                             <option value="">Umum (Semua Unit)</option>
                                             {masterKendaraan.map(k => (
-                                                <option key={k.id_kendaraan} value={k.id_kendaraan}>{k.nama_kendaraan}</option>
+                                                <option key={k.id_kendaraan} value={k.id_kendaraan}>
+                                                    {k.nama_kendaraan} {k.type_unit ? `(Tipe: ${k.type_unit})` : ''}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>

@@ -669,7 +669,14 @@ export default function KartuAkses() {
                                                                 onChange={() => handleKendaraanChange(k)}
                                                                 className="rounded text-[#E11D2E] focus:ring-[#E11D2E] w-4 h-4 cursor-pointer"
                                                             />
-                                                            <span className="flex-1">{k.nama_kendaraan} {k.type_unit ? `- ${k.type_unit}` : ''}</span>
+                                                            <span className="flex-1 font-bold text-gray-800">
+                                                                {k.nama_kendaraan}
+                                                                {k.type_unit && (
+                                                                    <span className="text-xs text-gray-500 font-normal ml-2">
+                                                                        ({k.type_unit})
+                                                                    </span>
+                                                                )}
+                                                            </span>
                                                             <span className="text-xs px-2 py-0.5 rounded-md font-medium bg-gray-100 text-gray-600">
                                                                 {k.kategori_kendaraan}
                                                             </span>
@@ -685,7 +692,33 @@ export default function KartuAkses() {
                                                         </label>
                                                         
                                                         {isChecked && (
-                                                            <div className="pl-7 pt-3 border-t border-gray-100 mt-0.5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                            <div className="pl-7 pt-3 border-t border-gray-100 mt-0.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                <div>
+                                                                    <label className="text-[11px] font-semibold text-gray-700 block mb-1">
+                                                                        Tipe Unit (KIMPER):
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder={k.type_unit || 'Semua Tipe'}
+                                                                        value={selectedUnit.type_unit !== undefined ? selectedUnit.type_unit : (k.type_unit || '')}
+                                                                        onChange={(e) => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'type_unit', e.target.value)}
+                                                                        className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white font-medium focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E]"
+                                                                    />
+                                                                    {k.type_unit && k.type_unit.includes(',') && (
+                                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                                            {k.type_unit.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => (
+                                                                                <button
+                                                                                    key={idx}
+                                                                                    type="button"
+                                                                                    onClick={() => handleKendaraanDetailChange(k.id_kendaraan || k.nama_kendaraan, 'type_unit', t)}
+                                                                                    className="text-[10px] px-1.5 py-0.2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded font-mono border border-gray-200"
+                                                                                >
+                                                                                    {t}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                                 <div>
                                                                     <label className="text-[11px] font-semibold text-gray-700 block mb-1">
                                                                         No. License ({k.nama_kendaraan}):

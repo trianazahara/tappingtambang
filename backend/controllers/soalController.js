@@ -5,8 +5,29 @@ const { MasterSoal, MasterKendaraan } = require('../models');
 // Get all soal
 const getAllSoal = async (req, res) => {
     try {
+        const { id_kendaraan, status_soal, search } = req.query;
+        const whereClause = {};
+
+        if (id_kendaraan !== undefined && id_kendaraan !== '' && id_kendaraan !== 'all') {
+            if (id_kendaraan === 'umum' || id_kendaraan === 'null') {
+                whereClause.id_kendaraan = null;
+            } else {
+                whereClause.id_kendaraan = parseInt(id_kendaraan);
+            }
+        }
+
+        if (status_soal && status_soal !== 'all') {
+            whereClause.status_soal = status_soal;
+        }
+
+        if (search && search.trim() !== '') {
+            const { Op } = require('sequelize');
+            whereClause.pertanyaan = { [Op.like]: `%${search.trim()}%` };
+        }
+
         const soal = await MasterSoal.findAll({
-            include: [{ model: MasterKendaraan, attributes: ['nama_kendaraan'] }],
+            where: whereClause,
+            include: [{ model: MasterKendaraan, attributes: ['id_kendaraan', 'nama_kendaraan', 'kategori_kendaraan', 'warna_permit'] }],
             order: [['id_soal', 'DESC']]
         });
         res.status(200).json({ success: true, data: soal });

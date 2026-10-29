@@ -1248,21 +1248,45 @@ export default function Permit() {
                                     )}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Kendaraan (Optional)</label>
-                                        <div className="bg-white border-2 border-gray-100 rounded-2xl max-h-48 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-sm">
-                                            {masterKendaraan.map(kend => (
-                                                <label key={kend.id_kendaraan} className="flex items-center p-3 rounded-xl bg-gray-50/50 border-2 border-transparent hover:border-gray-200 hover:shadow-md cursor-pointer transition-all">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={formData.jenis_kendaraan.includes(kend.nama_kendaraan)}
-                                                        onChange={() => handleKendaraanChange(kend.nama_kendaraan)}
-                                                        className="w-5 h-5 text-[#E11D2E] rounded border-gray-300 focus:ring-[#E11D2E] transition-colors"
-                                                    />
-                                                    <span className="ml-3 text-sm font-bold text-gray-700 flex-1">{kend.nama_kendaraan}</span>
-                                                    <span className={`ml-auto text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase ${kend.warna_permit === 'Hijau' ? 'bg-green-100 text-green-700' : kend.warna_permit === 'Biru' ? 'bg-blue-100 text-blue-700' : kend.warna_permit === 'Orange' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>{kend.warna_permit}</span>
-                                                </label>
-                                            ))}
+                                        <div className="bg-white border-2 border-gray-100 rounded-2xl max-h-60 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-sm">
+                                            {(() => {
+                                                const uniqueKendaraan = [];
+                                                const seenNames = new Set();
+                                                masterKendaraan.forEach(kend => {
+                                                    const cleanName = (kend.nama_kendaraan || '').trim().toLowerCase();
+                                                    if (!seenNames.has(cleanName)) {
+                                                        seenNames.add(cleanName);
+                                                        uniqueKendaraan.push(kend);
+                                                    }
+                                                });
+
+                                                return uniqueKendaraan.map(kend => (
+                                                    <label key={kend.id_kendaraan} className="flex items-start p-3 rounded-xl bg-gray-50/50 border-2 border-transparent hover:border-gray-200 hover:shadow-md cursor-pointer transition-all">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={formData.jenis_kendaraan.includes(kend.nama_kendaraan)}
+                                                            onChange={() => handleKendaraanChange(kend.nama_kendaraan)}
+                                                            className="mt-0.5 w-5 h-5 text-[#E11D2E] rounded border-gray-300 focus:ring-[#E11D2E] transition-colors"
+                                                        />
+                                                        <div className="ml-3 flex-1 min-w-0">
+                                                            <span className="text-sm font-bold text-gray-800 block truncate">{kend.nama_kendaraan}</span>
+                                                            {kend.type_unit && (
+                                                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                                                    <span className="text-[10px] text-gray-400 font-medium">Tipe:</span>
+                                                                    {kend.type_unit.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => (
+                                                                        <span key={idx} className="px-1.5 py-0.5 bg-gray-200/80 text-gray-700 rounded text-[10px] font-mono font-medium">
+                                                                            {t}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className={`ml-2 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase shrink-0 ${kend.warna_permit === 'Hijau' ? 'bg-green-100 text-green-700' : kend.warna_permit === 'Biru' ? 'bg-blue-100 text-blue-700' : kend.warna_permit === 'Orange' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>{kend.warna_permit}</span>
+                                                    </label>
+                                                ));
+                                            })()}
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5"><Info size={14} className="text-blue-500"/> Memilih kendaraan secara otomatis menentukan warna permit minimum yang dibutuhkan.</p>
+                                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5"><Info size={14} className="text-blue-500"/> Memilih jenis kendaraan otomatis menentukan warna permit minimum yang dibutuhkan.</p>
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="block text-sm font-bold text-gray-700 flex justify-between items-center">

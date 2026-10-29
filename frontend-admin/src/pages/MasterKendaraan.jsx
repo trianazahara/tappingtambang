@@ -80,14 +80,37 @@ export default function MasterKendaraan() {
         e.preventDefault();
         setError('');
         setSuccess('');
+
+        const trimmedNama = formData.nama_kendaraan.trim();
+        if (!trimmedNama) {
+            setError('Nama kendaraan wajib diisi');
+            return;
+        }
+
+        // Cek duplikasi di sisi client
+        const duplicate = kendaraanList.find(k => 
+            k.nama_kendaraan.toLowerCase() === trimmedNama.toLowerCase() && 
+            k.id_kendaraan !== editId
+        );
+        if (duplicate) {
+            setError(`Jenis kendaraan "${trimmedNama}" sudah ada. Silakan edit data tersebut untuk menambah tipe unit baru.`);
+            return;
+        }
+
         setSubmitLoading(true);
 
         try {
             if (editId) {
-                const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/kendaraan/${editId}`, formData);
+                const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/kendaraan/${editId}`, {
+                    ...formData,
+                    nama_kendaraan: trimmedNama
+                });
                 if (res.data.success) setSuccess('Kendaraan berhasil diupdate!');
             } else {
-                const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/kendaraan`, formData);
+                const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/kendaraan`, {
+                    ...formData,
+                    nama_kendaraan: trimmedNama
+                });
                 if (res.data.success) setSuccess('Kendaraan berhasil ditambahkan!');
             }
             
@@ -208,8 +231,18 @@ export default function MasterKendaraan() {
                                                         {item.kategori_kendaraan}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {item.type_unit || '-'}
+                                                <td className="px-6 py-4">
+                                                    {item.type_unit ? (
+                                                        <div className="flex flex-wrap gap-1 max-w-xs">
+                                                            {item.type_unit.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => (
+                                                                <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-xs font-mono font-medium border border-slate-200">
+                                                                    {t}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs italic">Semua Tipe</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
@@ -251,7 +284,7 @@ export default function MasterKendaraan() {
                     
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-1.5">
-                            <label className="block text-sm font-medium text-gray-700">Nama Kendaraan / Alat Berat</label>
+                            <label className="block text-sm font-semibold text-gray-700">Nama Jenis Kendaraan / Alat Berat</label>
                             <input 
                                 type="text" 
                                 name="nama_kendaraan"
@@ -259,12 +292,13 @@ export default function MasterKendaraan() {
                                 onChange={handleInputChange} 
                                 required 
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E] transition-all" 
-                                placeholder="Misal: Dump Truck, Dozer..." 
+                                placeholder="Misal: Light Vehicle, Dump Truck, Scania..." 
                             />
+                            <p className="text-xs text-gray-500">Nama induk kendaraan. Soal ujian online K3 dibuat per jenis kendaraan ini.</p>
                         </div>
                         
                         <div className="space-y-1.5">
-                            <label className="block text-sm font-medium text-gray-700">Kategori Kendaraan</label>
+                            <label className="block text-sm font-semibold text-gray-700">Kategori Kendaraan</label>
                             <select 
                                 name="kategori_kendaraan"
                                 value={formData.kategori_kendaraan} 
@@ -280,15 +314,18 @@ export default function MasterKendaraan() {
                         </div>
                         
                         <div className="space-y-1.5">
-                            <label className="block text-sm font-medium text-gray-700">Type Unit (Opsional)</label>
+                            <label className="block text-sm font-semibold text-gray-700">Tipe-Tipe Unit / Model (Pisahkan dengan koma)</label>
                             <input 
                                 type="text" 
                                 name="type_unit"
                                 value={formData.type_unit} 
                                 onChange={handleInputChange} 
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#E11D2E] focus:ring-1 focus:ring-[#E11D2E] transition-all" 
-                                placeholder="Misal: P460, P410..." 
+                                placeholder="Misal: 01, 02, 03, 05, Hilux, Triton..." 
                             />
+                            <p className="text-xs text-gray-500">
+                                Masukkan berbagai tipe unit untuk jenis ini. Saat pengajuan dan ujian, jenis kendaraan tetap muncul sebagai 1 kesatuan.
+                            </p>
                         </div>
                         
                         <div className="space-y-1.5">
