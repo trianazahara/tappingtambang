@@ -103,13 +103,19 @@ exports.getVisitors = async (req, res) => {
 exports.getPublicVisitor = async (req, res) => {
     try {
         const { uid } = req.params;
+        let decodedUid = uid;
+        try {
+            decodedUid = decodeURIComponent(uid);
+        } catch (e) {}
         const { Op } = require('sequelize');
         
         const visitor = await Visitor.findOne({
             where: {
                 [Op.or]: [
                     { nomor_kartu: uid },
-                    { uid_kartu: uid }
+                    { nomor_kartu: decodedUid },
+                    { uid_kartu: uid },
+                    { uid_kartu: decodedUid }
                 ],
                 status: 'Aktif'
             }
@@ -152,6 +158,65 @@ exports.createVisitor = async (req, res) => {
             validUntil.setDate(validUntil.getDate() + 1); // default 1 hari
         }
 
+        // Handle uploaded files
+        const files = req.files || {};
+        const filePaths = {};
+        for (const fieldname in files) {
+            if (files[fieldname] && files[fieldname].length > 0) {
+                filePaths[fieldname] = 'uploads/' + files[fieldname][0].filename;
+            }
+        }
+
+        // Handle online signature canvas (ttd_k3 base64)
+        if (req.body.ttd_k3) {
+            try {
+                const base64Data = req.body.ttd_k3.replace(/^data:image\/png;base64,/, "");
+                const filename = `ttd_k3_visitor_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+                const filepath = path.join(__dirname, '../uploads', filename);
+                fs.writeFileSync(filepath, base64Data, 'base64');
+                filePaths['file_safety_induksi'] = 'uploads/' + filename;
+            } catch (errSig) {
+                console.error("Gagal menyimpan ttd digital visitor:", errSig);
+            }
+        }
+
+        // Parse area_akses
+        let areaAksesData = area_akses;
+        if (typeof areaAksesData === 'string') {
+            try {
+                areaAksesData = JSON.parse(areaAksesData);
+            } catch (e) {}
+        }
+
+        // Parse assessment_kesehatan
+        let assessmentData = req.body.assessment_kesehatan;
+        if (typeof assessmentData === 'string') {
+            try {
+                assessmentData = JSON.parse(assessmentData);
+            } catch (e) {}
+        } else if (!assessmentData && (req.body.tinggi_badan || req.body.q1_sehat !== undefined)) {
+            assessmentData = {
+                tinggi_badan: req.body.tinggi_badan || null,
+                berat_badan: req.body.berat_badan || null,
+                tekanan_darah: req.body.tekanan_darah || '',
+                denyut_nadi: req.body.denyut_nadi || null,
+                golongan_darah: req.body.golongan_darah || '',
+                riwayat_penyakit: req.body.riwayat_penyakit || '',
+                q1_sehat: req.body.q1_sehat === true || req.body.q1_sehat === 'true',
+                q2_tidur_cukup: req.body.q2_tidur_cukup === true || req.body.q2_tidur_cukup === 'true',
+                q3_jantung: req.body.q3_jantung === true || req.body.q3_jantung === 'true',
+                q4_diabetes: req.body.q4_diabetes === true || req.body.q4_diabetes === 'true',
+                q5_kolesterol: req.body.q5_kolesterol === true || req.body.q5_kolesterol === 'true',
+                q6_obat_kantuk: req.body.q6_obat_kantuk === true || req.body.q6_obat_kantuk === 'true',
+                q7_paham_pekerjaan: req.body.q7_paham_pekerjaan === true || req.body.q7_paham_pekerjaan === 'true',
+                q8_paham_risiko: req.body.q8_paham_risiko === true || req.body.q8_paham_risiko === 'true',
+                q9_sedia_menegur: req.body.q9_sedia_menegur === true || req.body.q9_sedia_menegur === 'true',
+                q10_sedia_melapor: req.body.q10_sedia_melapor === true || req.body.q10_sedia_melapor === 'true',
+            };
+        }
+
+        const setujuK3 = req.body.setuju_aturan_k3 === true || req.body.setuju_aturan_k3 === 'true';
+
         const newVisitor = await Visitor.create({
             nomor_kartu,
             uid_kartu: uid_kartu || null,
@@ -159,12 +224,17 @@ exports.createVisitor = async (req, res) => {
             no_telp,
             perusahaan,
             warna_permit,
-            area_akses,
+            area_akses: areaAksesData,
             type_unit,
             nomor_license,
             issued_at,
             berlaku_hingga: validUntil,
-            status: 'Aktif'
+            status: 'Aktif',
+            file_ktp: filePaths['file_ktp'] || req.body.file_ktp || null,
+            file_surat_pengantar: filePaths['file_surat_pengantar'] || req.body.file_surat_pengantar || null,
+            file_safety_induksi: filePaths['file_safety_induksi'] || req.body.file_safety_induksi || null,
+            setuju_aturan_k3: setujuK3,
+            assessment_kesehatan: assessmentData || null
         });
 
         // Update master card status to Digunakan
@@ -197,20 +267,86 @@ exports.editVisitor = async (req, res) => {
             }
         }
 
+        // Handle uploaded files
+        const files = req.files || {};
+        const filePaths = {};
+        for (const fieldname in files) {
+            if (files[fieldname] && files[fieldname].length > 0) {
+                filePaths[fieldname] = 'uploads/' + files[fieldname][0].filename;
+            }
+        }
+
+        // Handle online signature canvas (ttd_k3 base64)
+        if (req.body.ttd_k3) {
+            try {
+                const base64Data = req.body.ttd_k3.replace(/^data:image\/png;base64,/, "");
+                const filename = `ttd_k3_visitor_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+                const filepath = path.join(__dirname, '../uploads', filename);
+                fs.writeFileSync(filepath, base64Data, 'base64');
+                filePaths['file_safety_induksi'] = 'uploads/' + filename;
+            } catch (errSig) {
+                console.error("Gagal menyimpan ttd digital visitor:", errSig);
+            }
+        }
+
+        // Parse area_akses
+        let areaAksesData = area_akses;
+        if (typeof areaAksesData === 'string') {
+            try {
+                areaAksesData = JSON.parse(areaAksesData);
+            } catch (e) {}
+        }
+
+        // Parse assessment_kesehatan
+        let assessmentData = req.body.assessment_kesehatan;
+        if (typeof assessmentData === 'string') {
+            try {
+                assessmentData = JSON.parse(assessmentData);
+            } catch (e) {}
+        } else if (!assessmentData && (req.body.tinggi_badan || req.body.q1_sehat !== undefined)) {
+            assessmentData = {
+                tinggi_badan: req.body.tinggi_badan || null,
+                berat_badan: req.body.berat_badan || null,
+                tekanan_darah: req.body.tekanan_darah || '',
+                denyut_nadi: req.body.denyut_nadi || null,
+                golongan_darah: req.body.golongan_darah || '',
+                riwayat_penyakit: req.body.riwayat_penyakit || '',
+                q1_sehat: req.body.q1_sehat === true || req.body.q1_sehat === 'true',
+                q2_tidur_cukup: req.body.q2_tidur_cukup === true || req.body.q2_tidur_cukup === 'true',
+                q3_jantung: req.body.q3_jantung === true || req.body.q3_jantung === 'true',
+                q4_diabetes: req.body.q4_diabetes === true || req.body.q4_diabetes === 'true',
+                q5_kolesterol: req.body.q5_kolesterol === true || req.body.q5_kolesterol === 'true',
+                q6_obat_kantuk: req.body.q6_obat_kantuk === true || req.body.q6_obat_kantuk === 'true',
+                q7_paham_pekerjaan: req.body.q7_paham_pekerjaan === true || req.body.q7_paham_pekerjaan === 'true',
+                q8_paham_risiko: req.body.q8_paham_risiko === true || req.body.q8_paham_risiko === 'true',
+                q9_sedia_menegur: req.body.q9_sedia_menegur === true || req.body.q9_sedia_menegur === 'true',
+                q10_sedia_melapor: req.body.q10_sedia_melapor === true || req.body.q10_sedia_melapor === 'true',
+            };
+        }
+
         visitor.nomor_kartu = nomor_kartu;
         visitor.uid_kartu = uid_kartu || null;
         visitor.nama = nama;
         visitor.no_telp = no_telp;
         visitor.perusahaan = perusahaan;
         visitor.warna_permit = warna_permit;
-        visitor.area_akses = area_akses;
+        visitor.area_akses = areaAksesData;
         visitor.type_unit = type_unit || '';
         visitor.nomor_license = nomor_license || '';
         visitor.issued_at = issued_at || '';
         
-        
         if (berlaku_hingga) {
             visitor.berlaku_hingga = new Date(berlaku_hingga);
+        }
+
+        if (filePaths['file_ktp']) visitor.file_ktp = filePaths['file_ktp'];
+        if (filePaths['file_surat_pengantar']) visitor.file_surat_pengantar = filePaths['file_surat_pengantar'];
+        if (filePaths['file_safety_induksi']) visitor.file_safety_induksi = filePaths['file_safety_induksi'];
+        if (req.body.setuju_aturan_k3 !== undefined) {
+            visitor.setuju_aturan_k3 = req.body.setuju_aturan_k3 === true || req.body.setuju_aturan_k3 === 'true';
+        }
+        if (assessmentData !== undefined) {
+            visitor.assessment_kesehatan = assessmentData;
         }
 
         await visitor.save();
@@ -316,7 +452,7 @@ exports.cetakVisitor = async (req, res) => {
         let qrBuffer = null;
         const uid = visitor.uid_kartu || visitor.nomor_kartu;
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const qrContent = `${frontendUrl}/v/${uid}`; // URL Public Profile Visitor
+        const qrContent = `${frontendUrl}/taptbg/v/${encodeURIComponent(uid)}`; // URL Public Profile Visitor
         try {
             const qrDataUrl = await QRCode.toDataURL(qrContent, { margin: 1 });
             const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");

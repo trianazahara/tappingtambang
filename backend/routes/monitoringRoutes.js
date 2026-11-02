@@ -23,6 +23,7 @@ const docLabels = {
     file_hasil_assessment: 'Hasil Assessment',
     file_permohonan_kimper: 'Permohonan Kimper',
     file_jsa: 'Job Safety Analysis (JSA)',
+    file_ik: 'Instruksi Kerja (IK)',
     file_life_saving_talk: 'Life Saving Talk',
     file_izin_kerja_umum: 'Izin Kerja Umum'
 };
@@ -100,7 +101,7 @@ router.get('/preview-docs', async (req, res) => {
     try {
         const { startDate, endDate, docType = 'file_safety_induksi', search = '' } = req.query;
 
-        const isProjectDoc = ['file_jsa', 'file_life_saving_talk', 'file_izin_kerja_umum'].includes(docType);
+        const isProjectDoc = ['file_jsa', 'file_ik', 'file_life_saving_talk', 'file_izin_kerja_umum'].includes(docType);
 
         if (isProjectDoc) {
             const whereClause = {
@@ -409,7 +410,7 @@ router.get('/export-docs', async (req, res) => {
             end.setHours(23, 59, 59, 999);
         }
 
-        const isProjectDoc = ['file_jsa', 'file_life_saving_talk', 'file_izin_kerja_umum'].includes(docType);
+        const isProjectDoc = ['file_jsa', 'file_ik', 'file_life_saving_talk', 'file_izin_kerja_umum'].includes(docType);
 
         if (isProjectDoc) {
             const whereClause = {

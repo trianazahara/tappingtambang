@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, Briefcase, MapPin, Calendar, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { User, Phone, Briefcase, MapPin, Calendar, Clock, AlertCircle, CheckCircle2, ShieldCheck, HeartPulse, FileText } from 'lucide-react';
 
 export default function VisitorPublic() {
     const { uid } = useParams();
@@ -15,7 +15,7 @@ export default function VisitorPublic() {
             try {
                 // We'll fetch both visitor data and areas
                 const [resVisitor, resArea] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/visitor/public/${uid}`),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/visitor/public/${encodeURIComponent(uid)}`),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/area`)
                 ]);
                 
@@ -157,6 +157,31 @@ export default function VisitorPublic() {
                                     )) : (
                                         <span className="text-gray-500 text-sm font-medium">Tidak ada area akses</span>
                                     )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status K3 & Dokumen Syarat */}
+                        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 text-left space-y-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                                <ShieldCheck size={16} /> Verifikasi K3 & Persyaratan
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="bg-white/80 p-2 rounded-xl flex items-center gap-2 border border-emerald-100">
+                                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                    <span className="font-medium text-gray-700">Asesmen Sehat</span>
+                                </div>
+                                <div className="bg-white/80 p-2 rounded-xl flex items-center gap-2 border border-emerald-100">
+                                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                    <span className="font-medium text-gray-700">Safety Induksi</span>
+                                </div>
+                                <div className="bg-white/80 p-2 rounded-xl flex items-center gap-2 border border-emerald-100">
+                                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                    <span className="font-medium text-gray-700">KTP Terverifikasi</span>
+                                </div>
+                                <div className="bg-white/80 p-2 rounded-xl flex items-center gap-2 border border-emerald-100">
+                                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                    <span className="font-medium text-gray-700">Surat Pengantar</span>
                                 </div>
                             </div>
                         </div>

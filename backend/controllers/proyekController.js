@@ -94,9 +94,11 @@ const uploadDocsProyek = async (req, res) => {
             });
         }
 
-        await proyek.update({
+        const updateData = {
+            jenis_dokumen_safety: req.body.jenis_dokumen_safety || proyek.jenis_dokumen_safety || 'JSA',
             file_life_saving_talk: filePaths['file_life_saving_talk'] || proyek.file_life_saving_talk,
             file_jsa: filePaths['file_jsa'] || proyek.file_jsa,
+            file_ik: filePaths['file_ik'] || proyek.file_ik,
             file_izin_kerja_umum: filePaths['file_izin_kerja_umum'] || proyek.file_izin_kerja_umum,
             file_izin_panas: filePaths['file_izin_panas'] || proyek.file_izin_panas,
             file_izin_ketinggian: filePaths['file_izin_ketinggian'] || proyek.file_izin_ketinggian,
@@ -106,7 +108,13 @@ const uploadDocsProyek = async (req, res) => {
             file_izin_penggalian: filePaths['file_izin_penggalian'] || proyek.file_izin_penggalian,
             file_izin_air: filePaths['file_izin_air'] || proyek.file_izin_air,
             file_izin_material_panas: filePaths['file_izin_material_panas'] || proyek.file_izin_material_panas,
-        });
+        };
+
+        if (req.body.link_ik !== undefined) {
+            updateData.link_ik = req.body.link_ik;
+        }
+
+        await proyek.update(updateData);
 
         res.status(200).json({ success: true, message: 'Dokumen safety proyek berhasil diunggah', data: proyek });
     } catch (error) {
@@ -123,8 +131,9 @@ const submitDraftsProyek = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Proyek tidak ditemukan' });
         }
 
-        if (proyek.jenis_proyek !== 'Perpanjangan' && !proyek.file_jsa) {
-            return res.status(400).json({ success: false, message: 'Dokumen safety JSA harus diunggah terlebih dahulu.' });
+        const hasSafetyDoc = proyek.file_jsa || proyek.file_ik || (proyek.link_ik && proyek.link_ik.trim() !== '');
+        if (proyek.jenis_proyek !== 'Perpanjangan' && !hasSafetyDoc) {
+            return res.status(400).json({ success: false, message: 'Dokumen safety (JSA atau Instruksi Kerja/IK) harus dilengkapi terlebih dahulu.' });
         }
 
         if (!proyek.file_surat_penunjukan || !proyek.file_kontrak_kerja) {

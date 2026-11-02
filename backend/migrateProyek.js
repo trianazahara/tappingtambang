@@ -1,5 +1,5 @@
 const db = require('./config/db');
-const { ProyekVendor, ProyekArea, PengajuanPermit } = require('./models');
+const { ProyekVendor, ProyekArea, PengajuanPermit, Visitor } = require('./models');
 
 async function migrate() {
     try {
@@ -13,6 +13,7 @@ async function migrate() {
         // Sync models
         await ProyekVendor.sync({ alter: true });
         await ProyekArea.sync({ alter: true });
+        await Visitor.sync({ alter: true });
 
         console.log('Migration completed successfully.');
         process.exit(0);

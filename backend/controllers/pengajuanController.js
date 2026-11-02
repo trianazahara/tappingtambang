@@ -129,9 +129,6 @@ const submitPengajuan = async (req, res) => {
 
         final_kategori_akses = final_kategori_akses || '';
 
-        const _idUser = parseInt(id_user_pengaju);
-        const parsedIdUser = !isNaN(_idUser) ? _idUser : null;
-
         // 4. Buat Data Pengajuan Permit
         const pengajuan = await PengajuanPermit.create({
             id_karyawan: karyawan.id_karyawan,

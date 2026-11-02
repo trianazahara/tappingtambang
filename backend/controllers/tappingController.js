@@ -14,6 +14,10 @@ const prosesTapping = async (req, res) => {
             uid_kartu = parts[parts.length - 1];
         }
 
+        try {
+            uid_kartu = decodeURIComponent(uid_kartu);
+        } catch (e) {}
+
         console.log("=== TAPPING DEBUG ===");
         console.log("Original UID:", uid_kartu);
 
@@ -79,7 +83,7 @@ const prosesTapping = async (req, res) => {
                     if (lastLog && lastLog.jenis_aktivitas === 'Masuk' && lastLog.status_akses === 'Diizinkan') {
                         jenisAktivitas = 'Keluar';
                     } else {
-                        jenisAktivitas = 'Masuk';
+                        jenisAktivitas = 'Masuk'
                     }
                 }
             }

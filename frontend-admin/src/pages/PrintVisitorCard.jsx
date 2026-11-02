@@ -8,7 +8,7 @@ export default function PrintVisitorCard() {
 
     useEffect(() => {
         // Generate the URL that the QR code will point to
-        const publicUrl = `${window.location.origin}/v/${uid}`;
+        const publicUrl = `${window.location.origin}/taptbg/v/${encodeURIComponent(uid)}`;
         setQrUrl(publicUrl);
 
         // Automatically trigger print after rendering

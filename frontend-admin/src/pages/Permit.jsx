@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FileText, Plus, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ChevronRight, Upload, Search, User, MapPin, Phone, Briefcase, Calendar, ShieldCheck, Activity, GraduationCap, XCircle, Info, Edit, Send } from 'lucide-react';
+import { FileText, Plus, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ChevronRight, Upload, Search, User, MapPin, Phone, Briefcase, Calendar, ShieldCheck, Activity, GraduationCap, XCircle, Info, Edit, Send, ExternalLink } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import SignatureCanvas from 'react-signature-canvas';
@@ -469,9 +469,10 @@ export default function Permit() {
         // Validasi Dokumen Proyek
         if (p.id_proyek && p.proyek_vendor) {
             const proyek = p.proyek_vendor;
+            const hasSafetyDoc = proyek.file_jsa || proyek.file_ik || (proyek.link_ik && proyek.link_ik.trim() !== '');
             if ((!proyek.file_surat_penunjukan || !proyek.file_kontrak_kerja) || 
-                (proyek.jenis_proyek !== 'Perpanjangan' && !proyek.file_jsa)) {
-                toast.error('Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap! Silakan lengkapi melalui Edit terlebih dahulu.');
+                (proyek.jenis_proyek !== 'Perpanjangan' && !hasSafetyDoc)) {
+                toast.error('Dokumen Bersama Proyek (JSA/IK / Kontrak / Surat Penunjukan) belum lengkap! Silakan lengkapi melalui Edit terlebih dahulu.');
                 return;
             }
         }
@@ -679,9 +680,10 @@ export default function Permit() {
             }
 
             if (formData.id_proyek && proyekData) {
+                const hasSafetyDoc = proyekData.file_jsa || proyekData.file_ik || (proyekData.link_ik && proyekData.link_ik.trim() !== '');
                 if ((!proyekData.file_surat_penunjukan || !proyekData.file_kontrak_kerja) || 
-                    (proyekData.jenis_proyek !== 'Perpanjangan' && !proyekData.file_jsa)) {
-                    const errMsg = 'Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.';
+                    (proyekData.jenis_proyek !== 'Perpanjangan' && !hasSafetyDoc)) {
+                    const errMsg = 'Dokumen Bersama Proyek (JSA/IK / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.';
                     setError(errMsg);
                     toast.error(errMsg);
                     setSubmitLoading(false);
@@ -1705,12 +1707,12 @@ export default function Permit() {
                             )}
                             {(formData.id_proyek && proyekData && (
                                 (!proyekData.file_surat_penunjukan || !proyekData.file_kontrak_kerja) || 
-                                (proyekData.jenis_proyek !== 'Perpanjangan' && !proyekData.file_jsa)
+                                (proyekData.jenis_proyek !== 'Perpanjangan' && !(proyekData.file_jsa || proyekData.file_ik || (proyekData.link_ik && proyekData.link_ik.trim() !== '')))
                             )) ? (
                                 <div className="p-4 bg-red-50 text-red-700 rounded-2xl border-2 border-red-100 flex items-start gap-4">
                                     <div className="p-2 bg-red-100 text-red-600 rounded-xl shrink-0"><AlertCircle size={20} /></div>
                                     <div className="text-sm font-medium leading-relaxed mt-1">
-                                        Tombol <span className="font-bold uppercase tracking-wide">Kirim Pengajuan</span> dinonaktifkan karena Dokumen Bersama Proyek (JSA / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.
+                                        Tombol <span className="font-bold uppercase tracking-wide">Kirim Pengajuan</span> dinonaktifkan karena Dokumen Bersama Proyek (JSA/IK / Kontrak / Surat Penunjukan) belum lengkap. Anda hanya dapat menggunakan Simpan Sementara.
                                     </div>
                                 </div>
                             ) : null}
@@ -2050,6 +2052,7 @@ export default function Permit() {
                                                 { key: 'file_permohonan_kimper', label: 'Permohonan Kimper' },
                                                 { key: 'file_life_saving_talk', label: 'Life Saving Talk' },
                                                 { key: 'file_jsa', label: 'JSA' },
+                                                { key: 'file_ik', label: 'Instruksi Kerja (IK)' },
                                                 { key: 'file_izin_kerja_umum', label: 'Izin Kerja Umum' },
                                                 { key: 'file_izin_panas', label: 'Izin Kerja Panas' },
                                                 { key: 'file_izin_ketinggian', label: 'Izin Kerja Ketinggian' },
@@ -2070,6 +2073,17 @@ export default function Permit() {
                                                     <ChevronRight size={16} className="text-gray-300 group-hover:text-orange-400" />
                                                 </a>
                                             ))}
+                                            {p.proyek_vendor.link_ik && (
+                                                <a href={p.proyek_vendor.link_ik} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50/40 rounded-xl hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm transition-all group">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                            <ExternalLink size={16} />
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-blue-800 transition-colors">Tautan IK (Google Drive)</span>
+                                                    </div>
+                                                    <ChevronRight size={16} className="text-blue-400" />
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

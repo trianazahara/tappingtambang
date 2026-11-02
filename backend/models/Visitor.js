@@ -55,6 +55,26 @@ const Visitor = db.define('visitor', {
     },
     tanggal_selesai: {
         type: DataTypes.DATE
+    },
+    file_ktp: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    file_surat_pengantar: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    file_safety_induksi: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
+    setuju_aturan_k3: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    assessment_kesehatan: {
+        type: DataTypes.JSON,
+        allowNull: true
     }
 }, {
     tableName: 'visitor',

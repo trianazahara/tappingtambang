@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Plus, ArrowLeft, Loader2, CheckCircle2, Users, FileText, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, ArrowLeft, Loader2, CheckCircle2, Users, FileText, ChevronRight, AlertCircle, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Proyek() {
@@ -31,6 +31,9 @@ export default function Proyek() {
     const [safetyFiles, setSafetyFiles] = useState({});
     const [safetyError, setSafetyError] = useState('');
     const [safetyLoading, setSafetyLoading] = useState(false);
+    const [safetyDocType, setSafetyDocType] = useState('JSA'); // 'JSA' | 'IK'
+    const [ikMethod, setIkMethod] = useState('upload'); // 'upload' | 'link'
+    const [linkIkInput, setLinkIkInput] = useState('');
     const [izinKhususCheck, setIzinKhususCheck] = useState({
         file_izin_panas: false,
         file_izin_ketinggian: false,
@@ -62,8 +65,9 @@ export default function Proyek() {
 
     const handleKirimAdmin = async (id_pengajuan) => {
         if (selectedProyek) {
-            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !selectedProyek.file_jsa) {
-                toast.error('Dokumen Safety JSA Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
+            const hasSafetyDoc = selectedProyek.file_jsa || selectedProyek.file_ik || (selectedProyek.link_ik && selectedProyek.link_ik.trim() !== '');
+            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !hasSafetyDoc) {
+                toast.error('Dokumen Safety (JSA atau IK) Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
                 return;
             }
             if (!selectedProyek.file_surat_penunjukan || !selectedProyek.file_kontrak_kerja) {
@@ -98,8 +102,9 @@ export default function Proyek() {
     };
     const handleKirimSemuaAdmin = async (id_proyek) => {
         if (selectedProyek && selectedProyek.id_proyek === id_proyek) {
-            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !selectedProyek.file_jsa) {
-                toast.error('Dokumen Safety JSA Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
+            const hasSafetyDoc = selectedProyek.file_jsa || selectedProyek.file_ik || (selectedProyek.link_ik && selectedProyek.link_ik.trim() !== '');
+            if (selectedProyek.jenis_proyek !== 'Perpanjangan' && !hasSafetyDoc) {
+                toast.error('Dokumen Safety (JSA atau IK) Proyek wajib dilengkapi terlebih dahulu sebelum mengirim pekerja ke admin.');
                 return;
             }
             if (!selectedProyek.file_surat_penunjukan || !selectedProyek.file_kontrak_kerja) {
@@ -187,23 +192,47 @@ export default function Proyek() {
         });
     };
 
+    const handleOpenSafetyModal = () => {
+        if (selectedProyek) {
+            const type = selectedProyek.jenis_dokumen_safety || (selectedProyek.file_ik || selectedProyek.link_ik ? 'IK' : 'JSA');
+            setSafetyDocType(type);
+            if (selectedProyek.link_ik) {
+                setIkMethod('link');
+                setLinkIkInput(selectedProyek.link_ik);
+            } else {
+                setIkMethod('upload');
+                setLinkIkInput('');
+            }
+        }
+        setSafetyFiles({});
+        setSafetyError('');
+        setSafetyModal(true);
+    };
+
     const handleSafetyFileChange = (e) => {
         const { name, files: fileList } = e.target;
         if (fileList.length > 0) {
             const file = fileList[0];
-            const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+            const validExtensions = name === 'file_ik' 
+                ? ['.pdf', '.zip', '.rar', '.png', '.jpg', '.jpeg'] 
+                : ['.pdf', '.png', '.jpg', '.jpeg'];
             const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
             if (!validExtensions.includes(fileExt)) {
-                setSafetyError('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
-                toast.error('Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.');
+                const msg = name === 'file_ik' 
+                    ? 'Format file tidak didukung. Harap unggah file PDF, ZIP, RAR, PNG, JPG, atau JPEG.' 
+                    : 'Format file tidak didukung. Harap unggah file PDF, PNG, JPG, atau JPEG.';
+                setSafetyError(msg);
+                toast.error(msg);
                 e.target.value = '';
                 return;
             }
 
-            if (file.size > 5 * 1024 * 1024) {
-                setSafetyError('Ukuran file tidak boleh lebih dari 5MB');
-                toast.error('Ukuran file tidak boleh lebih dari 5MB');
+            const maxFileSize = name === 'file_ik' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+            if (file.size > maxFileSize) {
+                const msg = name === 'file_ik' ? 'Ukuran file tidak boleh lebih dari 10MB' : 'Ukuran file tidak boleh lebih dari 5MB';
+                setSafetyError(msg);
+                toast.error(msg);
                 setTimeout(() => setSafetyError(''), 3000);
                 e.target.value = '';
                 return;
@@ -217,9 +246,17 @@ export default function Proyek() {
         setSafetyLoading(true);
         try {
             const submitData = new FormData();
+            submitData.append('jenis_dokumen_safety', safetyDocType);
+
             Object.keys(safetyFiles).forEach(key => {
                 if (safetyFiles[key]) submitData.append(key, safetyFiles[key]);
             });
+
+            if (safetyDocType === 'IK' && ikMethod === 'link') {
+                submitData.append('link_ik', linkIkInput ? linkIkInput.trim() : '');
+            } else if (safetyDocType === 'IK' && linkIkInput) {
+                submitData.append('link_ik', linkIkInput.trim());
+            }
 
             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/proyek/${selectedProyek.id_proyek}/upload-docs`, submitData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -459,6 +496,27 @@ export default function Proyek() {
                                         </a>
                                     );
                                 })()}
+                                {selectedProyek?.file_jsa && (() => {
+                                    const filename = selectedProyek.file_jsa.split(/[/\\]/).pop();
+                                    return (
+                                        <a href={`${import.meta.env.VITE_API_URL}/uploads/${filename}`} target="_blank" rel="noreferrer" className="text-xs bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-100 font-medium">
+                                            <FileText size={14} /> JSA
+                                        </a>
+                                    );
+                                })()}
+                                {selectedProyek?.file_ik && (() => {
+                                    const filename = selectedProyek.file_ik.split(/[/\\]/).pop();
+                                    return (
+                                        <a href={`${import.meta.env.VITE_API_URL}/uploads/${filename}`} target="_blank" rel="noreferrer" className="text-xs bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-emerald-100 font-medium">
+                                            <FileText size={14} /> Berkas IK
+                                        </a>
+                                    );
+                                })()}
+                                {selectedProyek?.link_ik && (
+                                    <a href={selectedProyek.link_ik} target="_blank" rel="noreferrer" className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-blue-100 font-medium">
+                                        <ExternalLink size={14} /> Link IK (GDrive)
+                                    </a>
+                                )}
                             </div>
                         </div>
                         {/* A button to add a new worker (links to Permit form pre-filled with id_proyek) */}
@@ -470,7 +528,7 @@ export default function Proyek() {
                                 </button>
                             )}
                             {selectedProyek?.jenis_proyek !== 'Perpanjangan' && (
-                                <button onClick={() => setSafetyModal(true)} className="py-2 px-4 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-xl font-medium shadow-sm flex items-center gap-2">
+                                <button onClick={handleOpenSafetyModal} className="py-2 px-4 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-xl font-medium shadow-sm flex items-center gap-2">
                                     <FileText size={18} /> Dokumen Safety
                                 </button>
                             )}
@@ -560,15 +618,164 @@ export default function Proyek() {
                                     {selectedProyek?.file_life_saving_talk && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="block text-sm font-medium text-gray-700">Job Safety Analysis (JSA) (PDF, PNG, JPG, JPEG, Maks 5MB)</label>
-                                    <input type="file" name="file_jsa" onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
-                                    {selectedProyek?.file_jsa && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
-                                </div>
-                                <div className="space-y-1">
                                     <label className="block text-sm font-medium text-gray-700">Izin Kerja Umum (PDF, PNG, JPG, JPEG, Maks 5MB)</label>
                                     <input type="file" name="file_izin_kerja_umum" onChange={handleSafetyFileChange} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" className="w-full text-sm text-gray-500 border rounded-lg px-3 py-2" />
                                     {selectedProyek?.file_izin_kerja_umum && <span className="text-xs text-green-600">✓ Sudah diunggah</span>}
                                 </div>
+                            </div>
+
+                            {/* Pilihan Dokumen Keselamatan Kerja: JSA vs IK */}
+                            <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200 space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-3">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-800">
+                                            Dokumen Analisis / Petunjuk Keselamatan Kerja <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mt-0.5">Pilih apakah proyek menggunakan Job Safety Analysis (JSA) atau Instruksi Kerja (IK).</p>
+                                    </div>
+                                    <div className="flex bg-gray-200/80 p-1 rounded-xl shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSafetyDocType('JSA')}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${safetyDocType === 'JSA' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                        >
+                                            Job Safety Analysis (JSA)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSafetyDocType('IK')}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${safetyDocType === 'IK' ? 'bg-[#E11D2E] text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                        >
+                                            Instruksi Kerja (IK)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* KONTEN JSA */}
+                                {safetyDocType === 'JSA' && (
+                                    <div className="space-y-1.5 animate-in fade-in duration-200">
+                                        <label className="block text-xs font-semibold text-gray-700">
+                                            Berkas Job Safety Analysis (JSA) (PDF, PNG, JPG, JPEG, Maks 5MB)
+                                        </label>
+                                        <input 
+                                            type="file" 
+                                            name="file_jsa" 
+                                            onChange={handleSafetyFileChange} 
+                                            accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" 
+                                            className="w-full text-sm text-gray-600 border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#E11D2E]" 
+                                        />
+                                        {selectedProyek?.file_jsa && (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                                                    <CheckCircle2 size={13} /> File JSA sudah diunggah
+                                                </span>
+                                                <a 
+                                                    href={`${import.meta.env.VITE_API_URL}/uploads/${selectedProyek.file_jsa.split(/[/\\]/).pop()}`} 
+                                                    target="_blank" 
+                                                    rel="noreferrer" 
+                                                    className="text-xs text-blue-600 hover:underline flex items-center gap-0.5"
+                                                >
+                                                    (Lihat File)
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* KONTEN IK (INSTRUKSI KERJA) */}
+                                {safetyDocType === 'IK' && (
+                                    <div className="space-y-3 animate-in fade-in duration-200">
+                                        <div className="flex items-center gap-4 text-xs font-semibold text-gray-700">
+                                            <span className="text-gray-500">Metode Unggah IK:</span>
+                                            <label className="flex items-center gap-1.5 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="ikMethod" 
+                                                    value="upload" 
+                                                    checked={ikMethod === 'upload'} 
+                                                    onChange={() => setIkMethod('upload')} 
+                                                    className="text-[#E11D2E] focus:ring-[#E11D2E]" 
+                                                />
+                                                <span>Unggah Berkas (PDF / ZIP / JPG)</span>
+                                            </label>
+                                            <label className="flex items-center gap-1.5 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="ikMethod" 
+                                                    value="link" 
+                                                    checked={ikMethod === 'link'} 
+                                                    onChange={() => setIkMethod('link')} 
+                                                    className="text-[#E11D2E] focus:ring-[#E11D2E]" 
+                                                />
+                                                <span>Tautan Google Drive</span>
+                                            </label>
+                                        </div>
+
+                                        {ikMethod === 'upload' ? (
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-semibold text-gray-700">
+                                                    Upload Dokumen IK (PDF, ZIP, RAR, JPG, JPEG, PNG, Maks 10MB)
+                                                </label>
+                                                <input 
+                                                    type="file" 
+                                                    name="file_ik" 
+                                                    onChange={handleSafetyFileChange} 
+                                                    accept=".pdf,.zip,.rar,.png,.jpg,.jpeg,application/pdf,application/zip,application/x-zip-compressed,image/png,image/jpeg" 
+                                                    className="w-full text-sm text-gray-600 border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:border-[#E11D2E]" 
+                                                />
+                                                <p className="text-[11px] text-gray-400">
+                                                    *Jika dokumen IK sangat banyak, kompres seluruh file ke dalam format <strong>.ZIP</strong> sebelum diunggah.
+                                                </p>
+                                                {selectedProyek?.file_ik && (
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                                                            <CheckCircle2 size={13} /> File IK sudah diunggah
+                                                        </span>
+                                                        <a 
+                                                            href={`${import.meta.env.VITE_API_URL}/uploads/${selectedProyek.file_ik.split(/[/\\]/).pop()}`} 
+                                                            target="_blank" 
+                                                            rel="noreferrer" 
+                                                            className="text-xs text-blue-600 hover:underline flex items-center gap-0.5"
+                                                        >
+                                                            (Unduh/Lihat File)
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-semibold text-gray-700">
+                                                    Tautan Link Google Drive / Cloud Folder Dokumen IK
+                                                </label>
+                                                <input 
+                                                    type="url" 
+                                                    value={linkIkInput} 
+                                                    onChange={e => setLinkIkInput(e.target.value)} 
+                                                    placeholder="https://drive.google.com/drive/folders/..." 
+                                                    className="w-full text-sm text-gray-800 border border-gray-300 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-[#E11D2E]/20 focus:border-[#E11D2E]" 
+                                                />
+                                                <p className="text-[11px] text-gray-400">
+                                                    *Pastikan akses link Google Drive telah disetel ke <strong>"Anyone with the link can view" (Siapa saja yang memiliki link dapat melihat)</strong>.
+                                                </p>
+                                                {selectedProyek?.link_ik && (
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                                                            <CheckCircle2 size={13} /> Link GDrive tersimpan
+                                                        </span>
+                                                        <a 
+                                                            href={selectedProyek.link_ik} 
+                                                            target="_blank" 
+                                                            rel="noreferrer" 
+                                                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                                        >
+                                                            (Buka Tautan <ExternalLink size={11} />)
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             
                             <div className="pt-4 border-t mt-4">

@@ -14,6 +14,7 @@ const fileFields = [
 const safetyDocsFields = [
     { name: 'file_life_saving_talk', maxCount: 1 },
     { name: 'file_jsa', maxCount: 1 },
+    { name: 'file_ik', maxCount: 1 },
     { name: 'file_izin_kerja_umum', maxCount: 1 },
     { name: 'file_izin_panas', maxCount: 1 },
     { name: 'file_izin_ketinggian', maxCount: 1 },
