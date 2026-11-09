@@ -52,7 +52,7 @@ const getListProyek = async (req, res) => {
         res.status(200).json({ success: true, data: proyek });
     } catch (error) {
         console.error("Error getListProyek:", error);
-        res.status(500).json({ success: false, message: 'Gagal mengambil data proyek' });
+        res.status(500).json({ success: false, message: 'Gagal mengambil data proyek', error: error.message });
     }
 };
 
@@ -74,7 +74,7 @@ const getDetailProyek = async (req, res) => {
         res.status(200).json({ success: true, data: proyek });
     } catch (error) {
         console.error("Error getDetailProyek:", error);
-        res.status(500).json({ success: false, message: 'Gagal mengambil detail proyek' });
+        res.status(500).json({ success: false, message: 'Gagal mengambil detail proyek', error: error.message });
     }
 };
 

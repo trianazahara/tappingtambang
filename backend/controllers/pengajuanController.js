@@ -283,7 +283,7 @@ const getListPengajuan = async (req, res) => {
         res.status(200).json({ success: true, data: pengajuan });
     } catch (error) {
         console.error("Error getListPengajuan:", error);
-        res.status(500).json({ success: false, message: "Gagal mengambil data pengajuan" });
+        res.status(500).json({ success: false, message: "Gagal mengambil data pengajuan", error: error.message });
     }
 };
 
@@ -317,7 +317,7 @@ const getDetailPengajuan = async (req, res) => {
         res.status(200).json({ success: true, data: pengajuan });
     } catch (error) {
         console.error("Error getDetailPengajuan:", error);
-        res.status(500).json({ success: false, message: "Gagal mengambil detail pengajuan" });
+        res.status(500).json({ success: false, message: "Gagal mengambil detail pengajuan", error: error.message });
     }
 };
 

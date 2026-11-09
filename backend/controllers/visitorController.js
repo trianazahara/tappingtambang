@@ -95,7 +95,7 @@ exports.getVisitors = async (req, res) => {
         res.json({ success: true, data: visitors });
     } catch (err) {
         console.error("Error getVisitors:", err);
-        res.status(500).json({ success: false, message: "Gagal mengambil data visitor" });
+        res.status(500).json({ success: false, message: "Gagal mengambil data visitor", error: err.message });
     }
 };
 
@@ -128,7 +128,7 @@ exports.getPublicVisitor = async (req, res) => {
         res.json({ success: true, data: visitor });
     } catch (err) {
         console.error("Error getPublicVisitor:", err);
-        res.status(500).json({ success: false, message: "Terjadi kesalahan sistem." });
+        res.status(500).json({ success: false, message: "Terjadi kesalahan sistem.", error: err.message });
     }
 };
 
@@ -244,7 +244,7 @@ exports.createVisitor = async (req, res) => {
         res.status(201).json({ success: true, message: "Berhasil menambahkan visitor", data: newVisitor });
     } catch (err) {
         console.error("Error createVisitor:", err);
-        res.status(500).json({ success: false, message: "Gagal menambah visitor" });
+        res.status(500).json({ success: false, message: "Gagal menambah visitor", error: err.message });
     }
 };
 
@@ -354,7 +354,7 @@ exports.editVisitor = async (req, res) => {
         res.status(200).json({ success: true, message: "Berhasil mengupdate visitor", data: visitor });
     } catch (err) {
         console.error("Error editVisitor:", err);
-        res.status(500).json({ success: false, message: "Gagal mengupdate visitor" });
+        res.status(500).json({ success: false, message: "Gagal mengupdate visitor", error: err.message });
     }
 };
 

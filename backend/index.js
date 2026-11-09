@@ -42,9 +42,16 @@ app.use('/api/monitoring', require('./routes/monitoringRoutes'));
 
 // Start Cron Jobs
 const startCronJobs = require('./cronJobs');
-startCronJobs();
+const ensureSchema = require('./utils/ensureSchema');
 
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+ensureSchema()
+    .catch((err) => {
+        console.error('[Schema] Auto-migration warning:', err.message || err);
+    })
+    .finally(() => {
+        startCronJobs();
+        app.listen(PORT, () => {
+            console.log(`Server berjalan di http://localhost:${PORT}`);
+        });
+    });
