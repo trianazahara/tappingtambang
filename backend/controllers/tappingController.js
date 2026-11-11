@@ -1,5 +1,23 @@
-const { KartuAkses, Karyawan, LogTapping, PengajuanPermit, User } = require('../models');
+const { KartuAkses, Karyawan, LogTapping, PengajuanPermit, User, MasterInstansi, ProyekVendor } = require('../models');
 const { Op } = require('sequelize');
+
+const parseKendaraanList = (rawTypeUnit) => {
+    if (!rawTypeUnit) return [];
+    if (Array.isArray(rawTypeUnit)) return rawTypeUnit;
+    if (typeof rawTypeUnit !== 'string') return [];
+
+    const trimmed = rawTypeUnit.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            return Array.isArray(parsed) ? parsed : [{ nama_kendaraan: trimmed }];
+        } catch (e) {
+            return [{ nama_kendaraan: trimmed }];
+        }
+    }
+    return [{ nama_kendaraan: trimmed }];
+};
 
 const prosesTapping = async (req, res) => {
     try {
@@ -9,13 +27,15 @@ const prosesTapping = async (req, res) => {
             return res.status(400).json({ success: false, message: 'UID Kartu dan ID User harus dikirim' });
         }
 
+        uid_kartu = String(uid_kartu).trim();
+
         if (uid_kartu.includes('/v/')) {
             const parts = uid_kartu.split('/v/');
-            uid_kartu = parts[parts.length - 1];
+            uid_kartu = parts[parts.length - 1].split(/[?#]/)[0].replace(/\/+$/, '');
         }
 
         try {
-            uid_kartu = decodeURIComponent(uid_kartu);
+            uid_kartu = decodeURIComponent(uid_kartu).trim();
         } catch (e) {}
 
         console.log("=== TAPPING DEBUG ===");
@@ -27,7 +47,7 @@ const prosesTapping = async (req, res) => {
 
         // Konversi Hex (dari HP) ke Decimal 10 digit (format alat scanner USB PC)
         let decimalUid = null;
-        if (/^[0-9A-F]+$/.test(normalizedUid) && normalizedUid.length % 2 === 0) {
+        if (/^[0-9A-F]+$/.test(normalizedUid) && normalizedUid.length >= 2 && normalizedUid.length <= 14 && normalizedUid.length % 2 === 0) {
             const reversedHex = normalizedUid.match(/.{2}/g).reverse().join('');
             decimalUid = parseInt(reversedHex, 16).toString().padStart(10, '0');
         }
@@ -37,8 +57,7 @@ const prosesTapping = async (req, res) => {
         console.log("Decimal Format (USB):", decimalUid);
 
         // Siapkan array pencarian
-        const searchUids = [uid_kartu, normalizedUid, formattedUid];
-        if (decimalUid) searchUids.push(decimalUid);
+        const searchUids = Array.from(new Set([uid_kartu, normalizedUid, formattedUid, ...(decimalUid ? [decimalUid] : [])].filter(Boolean)));
 
         // Cari kartu akses berdasarkan uid atau nomor barcode (nomor_permit)
         const kartu = await KartuAkses.findOne({
@@ -48,17 +67,22 @@ const prosesTapping = async (req, res) => {
                     { nomor_permit: { [Op.in]: searchUids } }
                 ]
             },
-            include: [{ model: Karyawan }]
+            include: [{
+                model: Karyawan,
+                include: [{ model: MasterInstansi }]
+            }]
         });
 
         let statusAkses = 'Ditolak';
         let keteranganSistem = 'Kartu tidak terdaftar';
         let jenisAktivitas = req.body.jenis_aktivitas || 'Masuk';
         let karyawanInfo = null;
+        let visitor = null;
         let color = 'red'; // Untuk UI HP Satpam (merah/hijau)
 
         if (kartu) {
-            karyawanInfo = kartu.karyawan;
+            karyawanInfo = kartu.karyawan ? kartu.karyawan.toJSON() : null;
+            const kartuLookupUids = Array.from(new Set([...searchUids, kartu.uid_kartu, kartu.nomor_permit].filter(Boolean)));
 
             // Cek apakah status kartu aktif
             if (kartu.status_kartu !== 'Aktif') {
@@ -75,7 +99,7 @@ const prosesTapping = async (req, res) => {
 
                 // Cari riwayat log terakhir untuk kartu ini untuk menentukan Masuk/Keluar
                 const lastLog = await LogTapping.findOne({
-                    where: { uid_kartu: uid_kartu },
+                    where: { uid_kartu: { [Op.in]: kartuLookupUids } },
                     order: [['waktu_scan', 'DESC']]
                 });
 
@@ -83,14 +107,14 @@ const prosesTapping = async (req, res) => {
                     if (lastLog && lastLog.jenis_aktivitas === 'Masuk' && lastLog.status_akses === 'Diizinkan') {
                         jenisAktivitas = 'Keluar';
                     } else {
-                        jenisAktivitas = 'Masuk'
+                        jenisAktivitas = 'Masuk';
                     }
                 }
             }
         } else {
             // Cek Visitor
             const { Visitor } = require('../models');
-            const visitor = await Visitor.findOne({
+            visitor = await Visitor.findOne({
                 where: {
                     [Op.or]: [
                         { nomor_kartu: { [Op.in]: searchUids } },
@@ -102,11 +126,12 @@ const prosesTapping = async (req, res) => {
 
             if (visitor) {
                 const { MasterArea } = require('../models');
+                const visitorLookupUids = Array.from(new Set([...searchUids, visitor.uid_kartu, visitor.nomor_kartu].filter(Boolean)));
                 let visitorAreas = [];
                 if (visitor.area_akses) {
                     try {
                         const areaIds = typeof visitor.area_akses === 'string' ? JSON.parse(visitor.area_akses) : visitor.area_akses;
-                        if (areaIds && areaIds.length > 0) {
+                        if (Array.isArray(areaIds) && areaIds.length > 0) {
                             const areas = await MasterArea.findAll({ where: { id_area: areaIds } });
                             visitorAreas = areas.map(a => a.nama_area);
                         }
@@ -114,18 +139,7 @@ const prosesTapping = async (req, res) => {
                 }
 
                 // Format Kendaraan untuk Visitor
-                let visitorKendaraan = [];
-                if (visitor.type_unit) {
-                    try {
-                        if (visitor.type_unit.startsWith('[')) {
-                            visitorKendaraan = JSON.parse(visitor.type_unit);
-                        } else {
-                            visitorKendaraan = [{ nama_kendaraan: visitor.type_unit }];
-                        }
-                    } catch (e) {
-                        visitorKendaraan = [{ nama_kendaraan: visitor.type_unit }];
-                    }
-                }
+                const visitorKendaraan = parseKendaraanList(visitor.type_unit);
 
                 karyawanInfo = {
                     nama_lengkap: `${visitor.nama} (Visitor)`,
@@ -148,7 +162,7 @@ const prosesTapping = async (req, res) => {
                     color = 'green';
 
                     const lastLog = await LogTapping.findOne({
-                        where: { uid_kartu: uid_kartu },
+                        where: { uid_kartu: { [Op.in]: visitorLookupUids } },
                         order: [['waktu_scan', 'DESC']]
                     });
 
@@ -163,10 +177,23 @@ const prosesTapping = async (req, res) => {
             }
         }
 
+        const canonicalLogUid = String(
+            (kartu && kartu.uid_kartu)
+            || (visitor && (visitor.uid_kartu || visitor.nomor_kartu))
+            || uid_kartu
+        ).slice(0, 100);
+
+        const anomalyLookupUids = Array.from(new Set([
+            ...searchUids,
+            canonicalLogUid,
+            ...(kartu ? [kartu.uid_kartu, kartu.nomor_permit] : []),
+            ...(visitor ? [visitor.uid_kartu, visitor.nomor_kartu] : [])
+        ].filter(Boolean)));
+
         // Check anomaly if user explicitly selected jenis_aktivitas and didn't force
         if (req.body.jenis_aktivitas && !req.body.force && statusAkses === 'Diizinkan') {
             const lastLogAny = await LogTapping.findOne({
-                where: { uid_kartu: uid_kartu },
+                where: { uid_kartu: { [Op.in]: anomalyLookupUids } },
                 order: [['waktu_scan', 'DESC']]
             });
 
@@ -179,9 +206,9 @@ const prosesTapping = async (req, res) => {
             }
         }
 
-        // Simpan log tapping
+        // Simpan log tapping (gunakan canonical UID agar relasi kartu_akses & riwayat masuk/keluar konsisten)
         await LogTapping.create({
-            uid_kartu: uid_kartu,
+            uid_kartu: canonicalLogUid,
             id_user: id_user,
             jenis_aktivitas: jenisAktivitas,
             status_akses: statusAkses,
@@ -194,6 +221,7 @@ const prosesTapping = async (req, res) => {
         let masaBerlaku = '-';
         let nomorLicense = '-';
         let issuedAt = '-';
+        let perusahaanName = karyawanInfo?.perusahaan || karyawanInfo?.master_instansi?.nama_instansi || null;
 
         if (kartu) {
             masaBerlaku = kartu.berlaku_hingga || '-';
@@ -201,17 +229,7 @@ const prosesTapping = async (req, res) => {
             issuedAt = kartu.issued_at || '-';
 
             // Format Kendaraan
-            if (kartu.type_unit) {
-                try {
-                    if (kartu.type_unit.startsWith('[')) {
-                        kendaraanArr = JSON.parse(kartu.type_unit);
-                    } else {
-                        kendaraanArr = [{ nama_kendaraan: kartu.type_unit }];
-                    }
-                } catch (e) {
-                    kendaraanArr = [{ nama_kendaraan: kartu.type_unit }];
-                }
-            }
+            kendaraanArr = parseKendaraanList(kartu.type_unit);
 
             // Ambil Foto & Area
             if (kartu.id_karyawan) {
@@ -219,10 +237,16 @@ const prosesTapping = async (req, res) => {
                 const lastPermit = await PengajuanPermit.findOne({
                     where: { id_karyawan: kartu.id_karyawan },
                     order: [['tanggal_pengajuan', 'DESC']],
-                    include: [{
-                        model: MasterArea,
-                        through: { attributes: [] }
-                    }]
+                    include: [
+                        {
+                            model: MasterArea,
+                            through: { attributes: [] }
+                        },
+                        {
+                            model: ProyekVendor,
+                            attributes: ['id_proyek', 'nama_proyek']
+                        }
+                    ]
                 });
                 if (lastPermit) {
                     if (lastPermit.file_foto) {
@@ -231,6 +255,9 @@ const prosesTapping = async (req, res) => {
                     }
                     if (lastPermit.master_areas && lastPermit.master_areas.length > 0) {
                         aksesAreaArr = lastPermit.master_areas.map(a => a.nama_area);
+                    }
+                    if (!perusahaanName && lastPermit.proyek_vendor?.nama_proyek) {
+                        perusahaanName = lastPermit.proyek_vendor.nama_proyek;
                     }
                 }
             }
@@ -242,6 +269,7 @@ const prosesTapping = async (req, res) => {
                 karyawanInfo.nomor_license = nomorLicense;
                 karyawanInfo.issued_at = issuedAt;
                 karyawanInfo.kategori_akses = kartu.warna_kartu || karyawanInfo.kategori_akses;
+                karyawanInfo.perusahaan = perusahaanName || karyawanInfo.unit_kerja || '-';
             }
         }
 
@@ -259,7 +287,7 @@ const prosesTapping = async (req, res) => {
             issued_at: karyawanInfo.issued_at || '-',
             foto: fotoURL,
             jenis_aktivitas: jenisAktivitas,
-            uid_kartu: uid_kartu
+            uid_kartu: canonicalLogUid
         } : null;
 
         if (statusAkses === 'Diizinkan') {
@@ -275,13 +303,13 @@ const prosesTapping = async (req, res) => {
                 message: keteranganSistem,
                 color: color,
                 data: responseDataObj,
-                uid_kartu: uid_kartu
+                uid_kartu: canonicalLogUid
             });
         }
 
     } catch (error) {
         console.error('Error prosesTapping:', error);
-        res.status(500).json({ success: false, message: 'Gagal memproses tapping server error' });
+        res.status(500).json({ success: false, message: 'Gagal memproses tapping server error', error: error.message });
     }
 };
 
@@ -359,7 +387,7 @@ const getLogTapping = async (req, res) => {
         res.status(200).json(enrichedLogs);
     } catch (error) {
         console.error('Error getLogTapping:', error);
-        res.status(500).json({ message: 'Gagal mengambil data log tapping' });
+        res.status(500).json({ message: 'Gagal mengambil data log tapping', error: error.message });
     }
 };
 

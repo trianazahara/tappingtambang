@@ -75,9 +75,9 @@ PengajuanPermit.belongsTo(ProyekVendor, { foreignKey: 'id_proyek' });
 ProyekVendor.belongsToMany(MasterArea, { through: ProyekArea, foreignKey: 'id_proyek', otherKey: 'id_area', timestamps: false });
 MasterArea.belongsToMany(ProyekVendor, { through: ProyekArea, foreignKey: 'id_area', otherKey: 'id_proyek', timestamps: false });
 
-// LogTapping & KartuAkses (1:N)
-LogTapping.belongsTo(KartuAkses, { foreignKey: 'uid_kartu', targetKey: 'uid_kartu' });
-KartuAkses.hasMany(LogTapping, { foreignKey: 'uid_kartu', sourceKey: 'uid_kartu' });
+// LogTapping & KartuAkses (1:N) - constraints: false agar log QR (nomor_permit), visitor, atau kartu tak terdaftar bisa tercatat
+LogTapping.belongsTo(KartuAkses, { foreignKey: 'uid_kartu', targetKey: 'uid_kartu', constraints: false });
+KartuAkses.hasMany(LogTapping, { foreignKey: 'uid_kartu', sourceKey: 'uid_kartu', constraints: false });
 
 module.exports = {
     User,

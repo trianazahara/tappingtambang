@@ -21,8 +21,8 @@ export default function FastTrackModal({ isOpen, onClose, onSuccess }) {
 
     useEffect(() => {
         if (isOpen) {
-            axios.get(`${import.meta.env.VITE_API_URL}/api/instansi`)
-                .then(res => setMasterInstansi(res.data.data))
+            axios.get(`${import.meta.env.VITE_API_URL}/api/instansi?status=Aktif`)
+                .then(res => setMasterInstansi((res.data.data || []).filter(i => i.status_instansi === 'Aktif')))
                 .catch(err => console.error("Gagal memuat data instansi", err));
         }
     }, [isOpen]);

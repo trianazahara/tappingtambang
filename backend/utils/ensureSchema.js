@@ -243,6 +243,32 @@ async function ensureSchema() {
         console.warn('[Schema] Column modification notice:', getDbErrorInfo(err).msg);
     }
 
+    // 4. Hapus FK constraint pada log_tapping.uid_kartu -> kartu_akses.uid_kartu jika ada
+    // (agar scan QR nomor_permit, kartu visitor, dan kartu tidak terdaftar tetap bisa dicatat tanpa error 500)
+    try {
+        const [fks] = await db.query(`
+            SELECT CONSTRAINT_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'log_tapping'
+              AND COLUMN_NAME = 'uid_kartu'
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+        `);
+        for (const fk of fks) {
+            try {
+                await db.query(`ALTER TABLE \`log_tapping\` DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+                console.log(`[Schema] Dropped FK constraint ${fk.CONSTRAINT_NAME} on log_tapping.uid_kartu`);
+            } catch (dropErr) {
+                const { errno, code, msg } = getDbErrorInfo(dropErr);
+                if (errno !== 1091 && code !== 'ER_CANT_DROP_FIELD_OR_KEY') {
+                    console.warn(`[Schema] Failed dropping FK ${fk.CONSTRAINT_NAME}:`, msg);
+                }
+            }
+        }
+    } catch (fkErr) {
+        console.warn('[Schema] FK check notice:', getDbErrorInfo(fkErr).msg);
+    }
+
     console.log('[Schema] Database schema verified.');
 }
 

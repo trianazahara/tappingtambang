@@ -3,7 +3,9 @@ const db = require('../config/db');
 
 const getInstansi = async (req, res) => {
     try {
-        const data = await MasterInstansi.findAll();
+        const { status } = req.query;
+        const whereClause = status ? { status_instansi: status } : {};
+        const data = await MasterInstansi.findAll({ where: whereClause });
         res.status(200).json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, message: "Gagal memuat instansi" });

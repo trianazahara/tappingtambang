@@ -298,8 +298,8 @@ export default function Permit() {
 
     const fetchMasterData = async () => {
         try {
-            const resInstansi = await axios.get(`${import.meta.env.VITE_API_URL}/api/instansi`);
-            setMasterInstansi(resInstansi.data.data);
+            const resInstansi = await axios.get(`${import.meta.env.VITE_API_URL}/api/instansi?status=Aktif`);
+            setMasterInstansi((resInstansi.data.data || []).filter(i => i.status_instansi === 'Aktif'));
             const resArea = await axios.get(`${import.meta.env.VITE_API_URL}/api/area`);
             setMasterArea(resArea.data.data);
             const resKendaraan = await axios.get(`${import.meta.env.VITE_API_URL}/api/kendaraan`);
@@ -1255,7 +1255,7 @@ export default function Permit() {
                                         <label className="block text-sm font-bold text-gray-800">
                                             Nama Instansi / Perusahaan / Vendor / Kampus {formData.kategori_pemohon !== 'Internal' && <span className="text-red-500">*</span>}
                                         </label>
-                                        {user?.id_instansi && (
+                                        {user?.id_instansi && masterInstansi.some(i => String(i.id_instansi) === String(user.id_instansi)) && (
                                             <button
                                                 type="button"
                                                 onClick={() => setFormData(prev => ({ ...prev, id_instansi: user.id_instansi }))}
